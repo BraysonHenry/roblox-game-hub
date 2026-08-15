@@ -134,8 +134,8 @@
       <button onclick="generateLinkCode()">1. Generate Link Code</button>
       
       <div id="link-code-section" style="display:none;">
-        <p style="font-size:0.8rem; color:#aaa; margin:5px 0 0 0;">2. Add this code to your <b>Roblox Profile Bio</b>:</p>
-        <div id="link-code-display" class="code-box">LINK-XXXXXX</div>
+        <p style="font-size:0.8rem; color:#aaa; margin:5px 0 0 0;">2. Add this exact text to your <b>Roblox Profile Bio</b>:</p>
+        <div id="link-code-display" class="code-box">code vrfy 000000</div>
         <button onclick="verifyRobloxBio()">3. Verify Profile Bio</button>
       </div>
 
@@ -194,7 +194,7 @@
       <h3>Developer Verification</h3>
       <p style="font-size:0.85rem; color:#ccc; margin:0;">Prove ownership of <b id="verify-game-name">Game</b>:</p>
       <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add this verification code to your game's description on Roblox:</p>
-      <div id="generated-code" class="code-box">VERIFY-XXXXXX</div>
+      <div id="generated-code" class="code-box">code vrfy 000000</div>
       <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">2. Click verify once saved on Roblox:</p>
       <button onclick="checkVerification()">Check Description & Verify</button>
       <button onclick="closeModal('verify-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
@@ -260,7 +260,6 @@
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-    // Sync listener for cross-tab communication
     syncChannel.onmessage = (e) => {
       const data = e.data;
       if (data.type === "FRIEND_REQUEST" && data.target === currentUser) {
@@ -319,11 +318,14 @@
       updateUI();
     }
 
-    /* Roblox Account Verification */
+    /* Roblox Account Verification (Moderation Safe Code) */
     function generateLinkCode() {
       const rbxUser = document.getElementById("roblox-username-input").value.trim();
       if (!rbxUser) return alert("Enter your Roblox username.");
-      currentLinkCode = "LINK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      const numCode = Math.floor(100000 + Math.random() * 900000);
+      currentLinkCode = "code vrfy " + numCode;
+      
       document.getElementById("link-code-display").innerText = currentLinkCode;
       document.getElementById("link-code-section").style.display = "block";
     }
@@ -353,7 +355,7 @@
           closeModal("account-link-modal");
           updateUI();
         } else {
-          alert("❌ Link code not found in your Roblox Profile Bio.");
+          alert("❌ Verification code not found in your Roblox Profile Bio.");
         }
       } catch (e) {
         alert("Error verifying Roblox bio.");
@@ -484,7 +486,8 @@
       if (!currentUser) return alert("Please sign in first to claim/verify a game.");
       
       activeVerifyPlaceId = placeId;
-      activeVerifyCode = "VERIFY-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const numCode = Math.floor(100000 + Math.random() * 900000);
+      activeVerifyCode = "code vrfy " + numCode;
       
       document.getElementById("verify-game-name").innerText = title;
       document.getElementById("generated-code").innerText = activeVerifyCode;
