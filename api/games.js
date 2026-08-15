@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Enable CORS so your index.html can query this route
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
@@ -16,9 +15,9 @@ export default async function handler(req, res) {
     const response = await fetch(targetUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
-    
+
     if (!response.ok) {
-      throw new Error(`Roblox API responded with ${response.status}`);
+      throw new Error(`Roblox API error: ${response.status}`);
     }
 
     const data = await response.json();
