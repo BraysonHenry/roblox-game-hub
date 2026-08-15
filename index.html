@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Game Hub</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background-color: #121212; color: #fff; margin: 0; padding: 20px; }
+    
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      max-width: 1000px; margin: 0 auto 30px auto;
+      border-bottom: 1px solid #333; padding-bottom: 15px;
+    }
+    
+    button, .btn {
+      background-color: #00a2ff; color: #fff; border: none;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      font-weight: bold; text-decoration: none; display: inline-block;
+    }
+    button:hover, .btn:hover { background-color: #0082cc; }
+
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-content {
+      background: #1e1e1e; padding: 25px; border-radius: 10px;
+      width: 320px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .modal-content input {
+      padding: 10px; background: #2a2a2a; border: 1px solid #444;
+      color: #fff; border-radius: 4px;
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; }
+    h2 { border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 30px; }
+
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .game-card {
+      background: #1e1e1e; border: 1px solid #333; border-radius: 10px;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .thumbnail-box { position: relative; width: 100%; height: 150px; background: #2a2a2a; }
+    .thumbnail-box img.thumb { width: 100%; height: 100%; object-fit: cover; }
+    .thumbnail-box img.icon {
+      position: absolute; bottom: -15px; left: 15px; width: 50px; height: 50px;
+      border-radius: 8px; border: 2px solid #1e1e1e; background: #000;
+    }
+
+    .card-body { padding: 25px 15px 15px 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .card-body h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+    .creator-tag { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
+    .badge {
+      display: inline-block; background: #ff9800; color: #000; font-size: 0.75rem;
+      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Roblox Game Hub</h1>
+    <div id="auth-section">
+      <button onclick="openModal('auth-modal')">Sign In / Sign Up</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <h2>🔥 Popular Experiences</h2>
+    <div id="popular-grid" class="grid"></div>
+
+    <h2>🎮 Community Games</h2>
+    <div id="user-grid" class="grid"></div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="auth-title">Account Access</h3>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="handleAuth('login')">Sign In</button>
+      <button onclick="handleAuth('signup')" style="background: #333;">Create Account</button>
+      <button onclick="closeModal('auth-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Submit Game Modal -->
+  <div id="game-modal" class="modal">
+    <div class="modal-content">
+      <h3>Submit Your Game</h3>
+      <input type="number" id="place-id" placeholder="Roblox Place ID">
+      <button onclick="submitGame()">Add Game</button>
+      <button onclick="closeModal('game-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const OFFICIAL_POPULAR_GAMES = [
+      { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc" },
+      { rank: 2, placeId: 920587237, universeId: 35142277, defaultName: "Adopt Me!", creator: "Uplift Games" },
+      { rank: 3, placeId: 4924922222, universeId: 1625373733, defaultName: "Brookhaven RP", creator: "Wolfpaq" },
+      { rank: 4, placeId: 17625359962, universeId: 6035872082, defaultName: "RIVALS", creator: "Nosniy Games" },
+      { rank: 5, placeId: 662417684, universeId: 23169942, defaultName: "Murder Mystery 2", creator: "Nikilis" },
+      { rank: 6, placeId: 10873380283, universeId: 4005886291, defaultName: "Forsaken", creator: "Forsaken Dev Team" },
+      { rank: 7, placeId: 8982709021, universeId: 3122183203, defaultName: "DOORS", creator: "LSPLASH" }
+    ];
+
+    let currentUser = localStorage.getItem("activeUser") || null;
+
+    function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
+    function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    function updateUI() {
+      const authSec = document.getElementById("auth-section");
+      if (currentUser) {
+        authSec.innerHTML = `
+          <span>Welcome, <b>${currentUser}</b></span>
+          <button onclick="openModal('game-modal')">+ Add Game</button>
+          <button onclick="logout()" style="background: #e53935;">Sign Out</button>
+        `;
+      } else {
+        authSec.innerHTML = `<button onclick="openModal('auth-modal')">Sign In / Sign Up</button>`;
+      }
+      renderAllGames();
+    }
+
+    function handleAuth(type) {
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+      if (!u || !p) return alert("Fill in both fields.");
+
+      let users = getStorage("site_users", {});
+      if (type === "signup") {
+        if (users[u]) return alert("Username taken!");
+        users[u] = p;
+        setStorage("site_users", users);
+      } else {
+        if (!users[u] || users[u] !== p) return alert("Invalid credentials.");
+      }
+
+      currentUser = u;
+      localStorage.setItem("activeUser", u);
+      closeModal("auth-modal");
+      updateUI();
+    }
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem("activeUser");
+      updateUI();
+    }
+
+    function submitGame() {
+      const inputId = parseInt(document.getElementById("place-id").value.trim());
+      if (!inputId) return alert("Enter a valid Place ID");
+
+      const isOfficial = OFFICIAL_POPULAR_GAMES.some(g => g.placeId === inputId);
+      if (isOfficial) {
+        return alert("This experience is on the Official Popular Chart and cannot be submitted by users.");
+      }
+
+      let userGames = getStorage("user_games", []);
+      if (!userGames.some(g => g.placeId === inputId)) {
+        userGames.push({ placeId: inputId, addedBy: currentUser });
+        setStorage("user_games", userGames);
+      }
+
+      closeModal("game-modal");
+      renderAllGames();
+    }
+
+    async function fetchGameData(gamesList) {
+      const corsProxy = "https://corsproxy.io/?";
+      const placeIds = gamesList.map(g => g.placeId).join(",");
+      const universeIds = gamesList.map(g => g.universeId).filter(Boolean).join(",");
+
+      const iconApi = `${corsProxy}${encodeURIComponent(`https://thumbnails.roblox.com/v1/places/gameicons?placeIds=${placeIds}&size=150x150&format=Png&isCircular=false`)}`;
+      const detailsApi = `${corsProxy}${encodeURIComponent(`https://games.roblox.com/v1/games?universeIds=${universeIds}`)}`;
+      const thumbApi = `${corsProxy}${encodeURIComponent(`https://thumbnails.roblox.com/v1/games/multiget/thumbnails?universeIds=${universeIds}&countPerUniverse=1&size=768x432&format=Png`)}`;
+
+      try {
+        const [iconRes, detailsRes, thumbRes] = await Promise.all([
+          fetch(iconApi).then(r => r.json()),
+          fetch(detailsApi).then(r => r.json()),
+          fetch(thumbApi).then(r => r.json())
+        ]);
+
+        const iconMap = {};
+        iconRes.data?.forEach(i => iconMap[i.targetId] = i.imageUrl);
+
+        const detailsMap = {};
+        detailsRes.data?.forEach(d => {
+          detailsMap[d.rootPlaceId] = {
+            name: d.name,
+            builder: d.creator?.name,
+            universeId: d.id
+          };
+        });
+
+        const thumbMap = {};
+        thumbRes.data?.forEach(t => {
+          if (t.thumbnails && t.thumbnails[0]) {
+            thumbMap[t.universeId] = t.thumbnails[0].imageUrl;
+          }
+        });
+
+        return { iconMap, detailsMap, thumbMap };
+      } catch (e) {
+        return { iconMap: {}, detailsMap: {}, thumbMap: {} };
+      }
+    }
+
+    async function renderAllGames() {
+      OFFICIAL_POPULAR_GAMES.sort((a, b) => a.rank - b.rank);
+
+      const popGrid = document.getElementById("popular-grid");
+      popGrid.innerHTML = "Loading chart games...";
+      const popData = await fetchGameData(OFFICIAL_POPULAR_GAMES);
+
+      let popHtml = "";
+      for (let game of OFFICIAL_POPULAR_GAMES) {
+        const details = popData.detailsMap[game.placeId];
+        const iconUrl = popData.iconMap[game.placeId] || "";
+        const thumbUrl = popData.thumbMap[game.universeId] || iconUrl;
+        const gameTitle = details?.name || game.defaultName;
+        const creatorName = game.creator || details?.builder || "Official Developer";
+
+        popHtml += `
+          <div class="game-card">
+            <div class="thumbnail-box">
+              <img class="thumb" src="${thumbUrl}" alt="${gameTitle}">
+              <img class="icon" src="${iconUrl}" alt="Icon">
+            </div>
+            <div class="card-body">
+              <div>
+                <span class="badge">#${game.rank} POPULAR</span>
+                <h3>${gameTitle}</h3>
+                <div class="creator-tag">By ${creatorName}</div>
+              </div>
+              <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
+            </div>
+          </div>
+        `;
+      }
+      popGrid.innerHTML = popHtml;
+
+      const userGrid = document.getElementById("user-grid");
+      const userGames = getStorage("user_games", []);
+      
+      if (userGames.length === 0) {
+        userGrid.innerHTML = "<p style='color:#777;'>No community games submitted yet.</p>";
+        return;
+      }
+
+      userGrid.innerHTML = "Loading community experiences...";
+      const userData = await fetchGameData(userGames);
+
+      let userHtml = "";
+      for (let game of userGames) {
+        const details = userData.detailsMap[game.placeId];
+        const iconUrl = userData.iconMap[game.placeId] || "";
+        const thumbUrl = userData.thumbMap[details?.universeId] || iconUrl;
+        const title = details?.name || `Place #${game.placeId}`;
+        const builder = details?.builder || "Community Creator";
+
+        userHtml += `
+          <div class="game-card">
+            <div class="thumbnail-box">
+              <img class="thumb" src="${thumbUrl}" alt="${title}">
+              <img class="icon" src="${iconUrl}" alt="Icon">
+            </div>
+            <div class="card-body">
+              <div>
+                <h3>${title}</h3>
+                <div class="creator-tag">Uploaded by ${game.addedBy} (By ${builder})</div>
+              </div>
+              <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
+            </div>
+          </div>
+        `;
+      }
+      userGrid.innerHTML = userHtml;
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = "flex"; }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    updateUI();
+  </script>
+</body>
+</html>
