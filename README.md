@@ -1,1 +1,20 @@
-If your reading this I have an favor for you. Please don't fork this or use this for stuff. Thanks
+Welcome to Roblox-Game-Hub, If you got here, please go to https://roblox-game-hub.vercel.app/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Thanks
+BrayVR
