@@ -10,7 +10,7 @@
     
     header {
       display: flex; justify-content: space-between; align-items: center;
-      max-width: 1000px; margin: 0 auto 30px auto;
+      max-width: 1000px; margin: 0 auto 20px auto;
       border-bottom: 1px solid #333; padding-bottom: 15px;
       flex-wrap: wrap; gap: 10px;
     }
@@ -22,6 +22,21 @@
       text-align: center;
     }
     button:hover, .btn:hover { background-color: #0082cc; }
+
+    /* Search Bar & Category Controls */
+    .controls-bar {
+      max-width: 1000px; margin: 0 auto 25px auto;
+      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    }
+    .search-input {
+      flex: 1; min-width: 200px; padding: 10px 14px; background: #1e1e1e;
+      border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 0.95rem;
+    }
+    .filter-btn {
+      background: #1e1e1e; color: #aaa; border: 1px solid #333;
+      padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    }
+    .filter-btn.active, .filter-btn:hover { background: #00a2ff; color: #fff; border-color: #00a2ff; }
 
     .modal {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -48,9 +63,18 @@
     .game-card {
       background: #1e1e1e; border: 1px solid #333; border-radius: 10px;
       overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
+      transition: transform 0.2s, border-color 0.2s; position: relative;
     }
     .game-card:hover { transform: translateY(-3px); border-color: #00a2ff; }
+
+    .star-btn {
+      position: absolute; top: 10px; right: 10px; z-index: 10;
+      background: rgba(0,0,0,0.6); border: none; border-radius: 50%;
+      width: 32px; height: 32px; color: #ffcc00; font-size: 1.2rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      padding: 0; transition: transform 0.1s;
+    }
+    .star-btn:hover { transform: scale(1.15); }
 
     .thumbnail-box { position: relative; width: 100%; height: 150px; background: #2a2a2a; }
     .thumbnail-box img.thumb { width: 100%; height: 100%; object-fit: cover; }
@@ -66,6 +90,10 @@
     .badge {
       display: inline-block; background: #ff9800; color: #000; font-size: 0.75rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content;
+    }
+    .category-badge {
+      display: inline-block; background: #333; color: #00a2ff; font-size: 0.7rem;
+      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-left: 4px;
     }
     .verified-badge {
       display: inline-block; background: #00e676; color: #000; font-size: 0.75rem;
@@ -105,7 +133,23 @@
     </div>
   </header>
 
+  <!-- Search & Category Filter Controls -->
+  <div class="controls-bar">
+    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search experiences or creators..." oninput="filterGames()">
+    <button class="filter-btn active" onclick="setCategoryFilter('ALL', this)">All</button>
+    <button class="filter-btn" onclick="setCategoryFilter('Fighting', this)">Fighting</button>
+    <button class="filter-btn" onclick="setCategoryFilter('RPG', this)">RPG / Adventure</button>
+    <button class="filter-btn" onclick="setCategoryFilter('Horror', this)">Horror</button>
+    <button class="filter-btn" onclick="setCategoryFilter('Social', this)">Social</button>
+  </div>
+
   <div class="container">
+    <!-- Starred Favorites Section -->
+    <div id="favorites-section" style="display:none;">
+      <h2>⭐ Favorite Experiences</h2>
+      <div id="favorites-grid" class="grid"></div>
+    </div>
+
     <h2>🔥 Popular Experiences</h2>
     <div id="popular-grid" class="grid"></div>
 
@@ -183,6 +227,12 @@
     <div class="modal-content">
       <h3>Submit Your Game</h3>
       <input type="number" id="place-id" placeholder="Roblox Place ID">
+      <select id="game-category-input">
+        <option value="Fighting">Fighting</option>
+        <option value="RPG">RPG / Adventure</option>
+        <option value="Horror">Horror</option>
+        <option value="Social">Social</option>
+      </select>
       <button onclick="submitGame()">Add Game</button>
       <button onclick="closeModal('game-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
     </div>
@@ -276,13 +326,13 @@
     const DEFAULT_ICON = "https://tr.rbxcdn.com/53eb9d17fe2910714da296cca30d43f0/150/150/Image/Png";
 
     const OFFICIAL_POPULAR_GAMES = [
-      { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc" },
-      { rank: 2, placeId: 920587237, universeId: 35142277, defaultName: "Adopt Me!", creator: "Uplift Games" },
-      { rank: 3, placeId: 4924922222, universeId: 1625373733, defaultName: "Brookhaven RP", creator: "Wolfpaq" },
-      { rank: 4, placeId: 17625359962, universeId: 6035872082, defaultName: "RIVALS", creator: "Nosniy Games" },
-      { rank: 5, placeId: 662417684, universeId: 23169942, defaultName: "Murder Mystery 2", creator: "Nikilis" },
-      { rank: 6, placeId: 10873380283, universeId: 4005886291, defaultName: "Forsaken", creator: "Forsaken Dev Team" },
-      { rank: 7, placeId: 8982709021, universeId: 3122183203, defaultName: "DOORS", creator: "LSPLASH" }
+      { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc", category: "RPG" },
+      { rank: 2, placeId: 920587237, universeId: 35142277, defaultName: "Adopt Me!", creator: "Uplift Games", category: "Social" },
+      { rank: 3, placeId: 4924922222, universeId: 1625373733, defaultName: "Brookhaven RP", creator: "Wolfpaq", category: "Social" },
+      { rank: 4, placeId: 17625359962, universeId: 6035872082, defaultName: "RIVALS", creator: "Nosniy Games", category: "Fighting" },
+      { rank: 5, placeId: 662417684, universeId: 23169942, defaultName: "Murder Mystery 2", creator: "Nikilis", category: "Horror" },
+      { rank: 6, placeId: 10873380283, universeId: 4005886291, defaultName: "Forsaken", creator: "Forsaken Dev Team", category: "Fighting" },
+      { rank: 7, placeId: 8982709021, universeId: 3122183203, defaultName: "DOORS", creator: "LSPLASH", category: "Horror" }
     ];
 
     let currentUser = localStorage.getItem("activeUser") || null;
@@ -294,6 +344,7 @@
     let pendingRequestSender = null;
     let currentLinkCode = "";
     let activeReportTarget = null;
+    let activeCategory = "ALL";
     let cachedGameDetails = {};
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -356,6 +407,31 @@
       currentUser = null;
       localStorage.removeItem("activeUser");
       updateUI();
+    }
+
+    function toggleFavorite(placeId, e) {
+      if (e) e.stopPropagation();
+      if (!currentUser) return alert("Please sign in to favorite games.");
+
+      let userFavs = getStorage(`favs_${currentUser}`, []);
+      if (userFavs.includes(placeId)) {
+        userFavs = userFavs.filter(id => id !== placeId);
+      } else {
+        userFavs.push(placeId);
+      }
+      setStorage(`favs_${currentUser}`, userFavs);
+      renderAllGames();
+    }
+
+    function setCategoryFilter(category, btnElement) {
+      activeCategory = category;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      if (btnElement) btnElement.classList.add('active');
+      filterGames();
+    }
+
+    function filterGames() {
+      renderAllGames();
     }
 
     function generateLinkCode() {
@@ -505,6 +581,7 @@
 
     function submitGame() {
       const inputId = parseInt(document.getElementById("place-id").value.trim());
+      const category = document.getElementById("game-category-input").value;
       if (!inputId) return alert("Enter a valid Place ID");
 
       const isOfficial = OFFICIAL_POPULAR_GAMES.some(g => g.placeId === inputId);
@@ -512,7 +589,7 @@
 
       let userGames = getStorage("user_games", []);
       if (!userGames.some(g => g.placeId === inputId)) {
-        userGames.push({ placeId: inputId, addedBy: currentUser });
+        userGames.push({ placeId: inputId, addedBy: currentUser, category: category });
         setStorage("user_games", userGames);
       }
 
@@ -773,83 +850,96 @@
       }
     }
 
+    function createGameCardHtml(game, thumbData, verifiedGames, userFavs, isOfficial) {
+      const details = cachedGameDetails[game.placeId];
+      const iconUrl = thumbData.iconMap[game.placeId] || thumbData.placeThumbMap[game.placeId] || DEFAULT_ICON;
+      const thumbUrl = thumbData.thumbMap[game.universeId] || thumbData.placeThumbMap[game.placeId] || iconUrl;
+      const gameTitle = details?.name || game.defaultName || `Place #${game.placeId}`;
+      const creatorName = game.creator || details?.builder || game.addedBy || "Developer";
+      const isVerified = !!verifiedGames[game.placeId];
+      const isFav = userFavs.includes(game.placeId);
+      const category = game.category || "Game";
+
+      return `
+        <div class="game-card" onclick="openGameInfo(${game.placeId})">
+          <button class="star-btn" onclick="toggleFavorite(${game.placeId}, event)" title="${isFav ? 'Unstar' : 'Star'}">
+            ${isFav ? '★' : '☆'}
+          </button>
+          <div class="thumbnail-box">
+            <img class="thumb" src="${thumbUrl}" alt="${gameTitle}">
+            <img class="icon" src="${iconUrl}" alt="Icon">
+          </div>
+          <div class="card-body">
+            <div>
+              ${isOfficial ? `<span class="badge">#${game.rank} POPULAR</span>` : ''}
+              <span class="category-badge">${category}</span>
+              ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
+              <h3>${gameTitle}</h3>
+              <div class="creator-tag">By ${creatorName}</div>
+            </div>
+            <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
+            ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     async function renderAllGames() {
-      OFFICIAL_POPULAR_GAMES.sort((a, b) => a.rank - b.rank);
+      const searchQuery = document.getElementById("search-input")?.value.toLowerCase() || "";
       const verifiedGames = getStorage("verified_games", {});
+      const userFavs = currentUser ? getStorage(`favs_${currentUser}`, []) : [];
 
+      // Filter Popular Games
+      let filteredPopular = OFFICIAL_POPULAR_GAMES.filter(g => {
+        const titleMatch = g.defaultName.toLowerCase().includes(searchQuery) || g.creator.toLowerCase().includes(searchQuery);
+        const catMatch = activeCategory === "ALL" || g.category === activeCategory;
+        return titleMatch && catMatch;
+      });
+
+      // Filter User Games
+      let userGames = getStorage("user_games", []);
+      let filteredUser = userGames.filter(g => {
+        const details = cachedGameDetails[g.placeId];
+        const title = details?.name || `Place #${g.placeId}`;
+        const builder = details?.builder || g.addedBy || "";
+        const titleMatch = title.toLowerCase().includes(searchQuery) || builder.toLowerCase().includes(searchQuery);
+        const catMatch = activeCategory === "ALL" || (g.category || "Fighting") === activeCategory;
+        return titleMatch && catMatch;
+      });
+
+      // Fetch Thumbnails
+      const allGames = [...OFFICIAL_POPULAR_GAMES, ...userGames];
+      const thumbData = await fetchGameData(allGames);
+
+      // Render Favorites Shelf
+      const favSec = document.getElementById("favorites-section");
+      const favGrid = document.getElementById("favorites-grid");
+      if (currentUser && userFavs.length > 0) {
+        favSec.style.display = "block";
+        let favHtml = "";
+        allGames.filter(g => userFavs.includes(g.placeId)).forEach(g => {
+          favHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, OFFICIAL_POPULAR_GAMES.some(p => p.placeId === g.placeId));
+        });
+        favGrid.innerHTML = favHtml || "<p style='color:#777;'>No matching favorites found.</p>";
+      } else {
+        favSec.style.display = "none";
+      }
+
+      // Render Popular Grid
       const popGrid = document.getElementById("popular-grid");
-      popGrid.innerHTML = "Loading chart games...";
-      const popData = await fetchGameData(OFFICIAL_POPULAR_GAMES);
-
       let popHtml = "";
-      for (let game of OFFICIAL_POPULAR_GAMES) {
-        const details = cachedGameDetails[game.placeId];
-        const iconUrl = popData.iconMap[game.placeId] || popData.placeThumbMap[game.placeId] || DEFAULT_ICON;
-        const thumbUrl = popData.thumbMap[game.universeId] || popData.placeThumbMap[game.placeId] || iconUrl;
-        const gameTitle = details?.name || game.defaultName;
-        const creatorName = game.creator || details?.builder || "Official Developer";
-        const isVerified = !!verifiedGames[game.placeId];
+      filteredPopular.forEach(g => {
+        popHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, true);
+      });
+      popGrid.innerHTML = popHtml || "<p style='color:#777;'>No matching popular experiences found.</p>";
 
-        popHtml += `
-          <div class="game-card" onclick="openGameInfo(${game.placeId})">
-            <div class="thumbnail-box">
-              <img class="thumb" src="${thumbUrl}" alt="${gameTitle}">
-              <img class="icon" src="${iconUrl}" alt="Icon">
-            </div>
-            <div class="card-body">
-              <div>
-                <span class="badge">#${game.rank} POPULAR</span>
-                ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
-                <h3>${gameTitle}</h3>
-                <div class="creator-tag">By ${creatorName}</div>
-              </div>
-              <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
-              ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
-            </div>
-          </div>
-        `;
-      }
-      popGrid.innerHTML = popHtml;
-
+      // Render User Grid
       const userGrid = document.getElementById("user-grid");
-      const userGames = getStorage("user_games", []);
-      
-      if (userGames.length === 0) {
-        userGrid.innerHTML = "<p style='color:#777;'>No community games submitted yet.</p>";
-        return;
-      }
-
-      userGrid.innerHTML = "Loading community experiences...";
-      const userData = await fetchGameData(userGames);
-
       let userHtml = "";
-      for (let game of userGames) {
-        const details = cachedGameDetails[game.placeId];
-        const iconUrl = userData.iconMap[game.placeId] || userData.placeThumbMap[game.placeId] || DEFAULT_ICON;
-        const thumbUrl = userData.thumbMap[details?.universeId] || userData.placeThumbMap[game.placeId] || iconUrl;
-        const title = details?.name || `Place #${game.placeId}`;
-        const builder = details?.builder || "Community Creator";
-        const isVerified = !!verifiedGames[game.placeId];
-
-        userHtml += `
-          <div class="game-card" onclick="openGameInfo(${game.placeId})">
-            <div class="thumbnail-box">
-              <img class="thumb" src="${thumbUrl}" alt="${title}">
-              <img class="icon" src="${iconUrl}" alt="Icon">
-            </div>
-            <div class="card-body">
-              <div>
-                ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
-                <h3>${title}</h3>
-                <div class="creator-tag">Uploaded by ${game.addedBy} (By ${builder})</div>
-              </div>
-              <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
-              ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${title.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
-            </div>
-          </div>
-        `;
-      }
-      userGrid.innerHTML = userHtml;
+      filteredUser.forEach(g => {
+        userHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, false);
+      });
+      userGrid.innerHTML = userHtml || "<p style='color:#777;'>No matching community experiences found.</p>";
     }
 
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
