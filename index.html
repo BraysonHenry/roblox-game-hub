@@ -78,19 +78,11 @@
 
     .thumbnail-box { position: relative; width: 100%; height: 150px; background: #2a2a2a; }
     .thumbnail-box img.thumb { width: 100%; height: 100%; object-fit: cover; }
-    .thumbnail-box img.icon {
-      position: absolute; bottom: -15px; left: 15px; width: 50px; height: 50px;
-      border-radius: 8px; border: 2px solid #1e1e1e; background: #000;
-    }
 
     .card-body { padding: 25px 15px 15px 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .card-body h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
     .creator-tag { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
     
-    .badge {
-      display: inline-block; background: #ff9800; color: #000; font-size: 0.75rem;
-      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content;
-    }
     .category-badge {
       display: inline-block; background: #333; color: #00a2ff; font-size: 0.7rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-left: 4px;
@@ -99,10 +91,6 @@
       display: inline-block; background: #00e676; color: #000; font-size: 0.75rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content; margin-left: 5px;
     }
-    .action-btn {
-      background: #333; color: #aaa; border: 1px solid #555; margin-top: 5px; padding: 6px 10px; font-size: 0.8rem; border-radius: 4px; cursor: pointer;
-    }
-    .action-btn:hover { background: #444; color: #fff; }
     .code-box {
       background: #111; padding: 10px; font-family: monospace; color: #00e676; border: 1px dashed #444; text-align: center; font-size: 1.1rem; margin: 5px 0;
     }
@@ -122,6 +110,13 @@
     .chat-msg.mine { background: #00a2ff; color: #fff; align-self: flex-end; }
     .chat-msg.other { background: #2a2a2a; color: #ccc; align-self: flex-start; }
     .chat-sender { font-size: 0.7rem; color: #aaa; margin-bottom: 2px; }
+
+    /* Timer Status Box */
+    .status-box {
+      background: #111; border: 1px solid #333; border-radius: 8px;
+      padding: 15px; text-align: center; color: #00a2ff; font-weight: bold; font-size: 0.95rem;
+      margin-bottom: 15px; grid-column: 1 / -1;
+    }
   </style>
 </head>
 <body>
@@ -213,45 +208,6 @@
     </div>
   </div>
 
-  <!-- Realtime Friend Request Notification Popup -->
-  <div id="request-modal" class="modal">
-    <div class="modal-content" style="text-align:center;">
-      <h3 style="margin:0;">👋 Friend Request!</h3>
-      <p style="font-size:0.9rem; color:#ccc;"><b id="request-sender-name">User</b> sent you a friend request.</p>
-      <button onclick="acceptFriendRequest()">Accept</button>
-      <button onclick="closeModal('request-modal')" style="background:#333;">Decline</button>
-    </div>
-  </div>
-
-  <!-- Submit Game Modal -->
-  <div id="game-modal" class="modal">
-    <div class="modal-content">
-      <h3>Submit Your Game</h3>
-      <input type="number" id="place-id" placeholder="Roblox Place ID">
-      <select id="game-category-input">
-        <option value="Fighting">Fighting</option>
-        <option value="RPG">RPG / Adventure</option>
-        <option value="Horror">Horror</option>
-        <option value="Social">Social</option>
-      </select>
-      <button onclick="submitGame()">Add Game</button>
-      <button onclick="closeModal('game-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Developer Verification Modal -->
-  <div id="verify-modal" class="modal">
-    <div class="modal-content">
-      <h3>Developer Verification</h3>
-      <p style="font-size:0.85rem; color:#ccc; margin:0;">Prove ownership of <b id="verify-game-name">Game</b>:</p>
-      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add your website username to your game's description on Roblox:</p>
-      <div id="generated-code" class="code-box">username</div>
-      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">2. Click verify once saved on Roblox:</p>
-      <button onclick="checkVerification()">Check Description & Verify</button>
-      <button onclick="closeModal('verify-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
-    </div>
-  </div>
-
   <!-- Full Info & Private Server Modal -->
   <div id="info-modal" class="modal">
     <div class="modal-content">
@@ -269,21 +225,10 @@
       <div class="server-list">
         <b style="font-size:0.9rem;">🔒 Friends Private Servers</b>
         <div id="private-servers-container" style="margin-top:5px;"></div>
-        <button class="action-btn" style="width:100%; margin-top:8px;" onclick="openAddServerModal()">+ Add Private Server Link</button>
+        <button class="btn" style="width:100%; margin-top:8px; background:#333;" onclick="openAddServerModal()">+ Add Private Server Link</button>
       </div>
 
       <button onclick="closeModal('info-modal')" style="background: transparent; border: 1px solid #555;">Close</button>
-    </div>
-  </div>
-
-  <!-- Add Private Server Link Modal -->
-  <div id="add-server-modal" class="modal">
-    <div class="modal-content">
-      <h3>Add Private Server Link</h3>
-      <p style="font-size:0.8rem; color:#aaa; margin:0;">Only users on your website friends list will be able to see this link.</p>
-      <input type="text" id="server-link-input" placeholder="https://www.roblox.com/games/123456?privateServerLinkCode=...">
-      <button onclick="savePrivateServer()">Save Private Server</button>
-      <button onclick="closeModal('add-server-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
     </div>
   </div>
 
@@ -295,21 +240,39 @@
 
     let fetchedRobloxGames = [];
     let currentUser = localStorage.getItem("activeUser") || null;
-    let syncChannel = new BroadcastChannel("roblox_hub_sync");
-    let activeVerifyPlaceId = null;
-    let activeVerifyCode = "";
-    let selectedGamePlaceId = null;
-    let activeChatFriend = null;
-    let pendingRequestSender = null;
-    let currentLinkCode = "";
     let activeCategory = "ALL";
     let cachedGameDetails = {};
+    
+    // Timer Variables
+    let searchStartTime = 0;
+    let elapsedTimeMs = 0;
+    let timerInterval = null;
+    let isLoading = false;
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+    function startFetchTimer() {
+      searchStartTime = performance.now();
+      isLoading = true;
+      elapsedTimeMs = 0;
+      clearInterval(timerInterval);
+      
+      timerInterval = setInterval(() => {
+        elapsedTimeMs = performance.now() - searchStartTime;
+        renderAllGames();
+      }, 50);
+    }
+
+    function stopFetchTimer() {
+      isLoading = false;
+      clearInterval(timerInterval);
+      elapsedTimeMs = performance.now() - searchStartTime;
+    }
+
     // Dynamic fetch from Roblox API
     async function loadPopularGames() {
+      startFetchTimer();
       try {
         const res = await fetch(`${PROXY_SEARCH}?sortOrder=Asc&limit=40`);
         const data = await res.json();
@@ -326,14 +289,17 @@
         }
       } catch (e) {
         console.error("Failed to load Roblox games dynamically", e);
+      } finally {
+        stopFetchTimer();
+        renderAllGames();
       }
-      renderAllGames();
     }
 
     async function searchGames() {
       const q = document.getElementById("search-input").value.trim();
       if (!q) return loadPopularGames();
 
+      startFetchTimer();
       try {
         const res = await fetch(`${PROXY_GAMES}/v1/games/list?keyword=${encodeURIComponent(q)}&limit=30`);
         const data = await res.json();
@@ -346,11 +312,16 @@
             creator: g.builder || "Roblox Creator",
             category: g.genre || "Game"
           }));
+        } else {
+          fetchedRobloxGames = [];
         }
       } catch (e) {
         console.error("Search error:", e);
+        fetchedRobloxGames = [];
+      } finally {
+        stopFetchTimer();
+        renderAllGames();
       }
-      renderAllGames();
     }
 
     function updateUI() {
@@ -363,7 +334,6 @@
           <span>Welcome, <b>${currentUser}</b> ${linkedRbx ? `<span class="verified-badge">✓ @${linkedRbx}</span>` : ''}</span>
           ${!linkedRbx ? `<button onclick="openModal('account-link-modal')" style="background:#ff9800; color:#000;">Link Roblox</button>` : ''}
           <button onclick="openModal('friends-modal'); renderFriendsList();">Friends & Chat</button>
-          <button onclick="openModal('game-modal')">+ Add Game</button>
           <button onclick="logout()" style="background: #e53935;">Sign Out</button>
         `;
       } else {
@@ -419,52 +389,7 @@
       renderAllGames();
     }
 
-    function openGameInfo(placeId) {
-      selectedGamePlaceId = placeId;
-      const info = cachedGameDetails[placeId] || {};
-      const verifiedGames = getStorage("verified_games", {});
-      const isVerified = !!verifiedGames[placeId];
-
-      document.getElementById("info-title").innerText = info.name || `Place #${placeId}`;
-      document.getElementById("info-creator").innerText = "By " + (info.builder || "Developer");
-      document.getElementById("info-description").innerText = info.description || "No description provided.";
-      document.getElementById("info-play-btn").href = `roblox://placeid=${placeId}`;
-
-      let badgesHtml = "";
-      if (isVerified) badgesHtml += '<span class="verified-badge">✓ VERIFIED DEV</span>';
-      document.getElementById("info-badges").innerHTML = badgesHtml;
-
-      renderPrivateServers(placeId);
-      openModal("info-modal");
-    }
-
-    function renderPrivateServers(placeId) {
-      const container = document.getElementById("private-servers-container");
-      let allServers = getStorage("private_servers", {});
-      let gameServers = allServers[placeId] || [];
-
-      let friendsMap = getStorage("site_friends", {});
-      let userFriends = friendsMap[currentUser] || [];
-
-      let visibleServers = gameServers.filter(s => s.owner === currentUser || userFriends.includes(s.owner));
-
-      if (visibleServers.length === 0) {
-        container.innerHTML = "<p style='color:#777; font-size:0.8rem; margin:5px 0;'>No private server links from friends yet.</p>";
-      } else {
-        let html = "";
-        visibleServers.forEach(s => {
-          html += `
-            <div class="server-item">
-              <span><b>${s.owner}</b>'s Server</span>
-              <a href="${s.link}" target="_blank" class="btn" style="padding:3px 8px; font-size:0.75rem;">Join Server</a>
-            </div>
-          `;
-        });
-        container.innerHTML = html;
-      }
-    }
-
-    function createGameCardHtml(game, verifiedGames, userFavs, isOfficial) {
+    function createGameCardHtml(game, verifiedGames, userFavs) {
       const isFav = userFavs.includes(game.placeId);
       const isVerified = !!verifiedGames[game.placeId];
 
@@ -498,11 +423,31 @@
       });
 
       let popGrid = document.getElementById("popular-grid");
+      let secondsFormatted = (elapsedTimeMs / 1000).toFixed(2);
+
+      if (isLoading) {
+        popGrid.innerHTML = `
+          <div class="status-box">
+            ⏱️ Searching Roblox network... (${secondsFormatted}s elapsed)
+          </div>
+        `;
+        return;
+      }
+
+      if (filteredPopular.length === 0) {
+        popGrid.innerHTML = `
+          <div class="status-box" style="color: #ff5555; border-color: #552222;">
+            ⚠️ No games found. It took <b>${secondsFormatted}s</b> (${Math.round(elapsedTimeMs)} ms) to search the network.
+          </div>
+        `;
+        return;
+      }
+
       let popHtml = "";
       filteredPopular.forEach(g => {
-        popHtml += createGameCardHtml(g, verifiedGames, userFavs, true);
+        popHtml += createGameCardHtml(g, verifiedGames, userFavs);
       });
-      popGrid.innerHTML = popHtml || "<p style='color:#777;'>Searching Roblox network...</p>";
+      popGrid.innerHTML = popHtml;
     }
 
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
