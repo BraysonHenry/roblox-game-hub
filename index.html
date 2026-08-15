@@ -603,40 +603,39 @@
       const universeIds = gamesList.map(g => g.universeId).filter(Boolean).join(",");
 
       const iconApi = `${roThumbProxy}/v1/places/gameicons?placeIds=${placeIds}&size=150x150&format=Png&isCircular=false`;
-      const detailsApi = `${roGamesProxy}/v1/games?universeIds=${universeIds}`;
-      const thumbApi = `${roThumbProxy}/v1/games/multiget/thumbnails?universeIds=${universeIds}&countPerUniverse=1&size=768x432&format=Png`;
+      const thumbApi = universeIds ? `${roThumbProxy}/v1/games/multiget/thumbnails?universeIds=${universeIds}&countPerUniverse=1&size=768x432&format=Png` : null;
+      const placeThumbApi = `${roThumbProxy}/v1/games/icons?placeIds=${placeIds}&size=512x512&format=Png&isCircular=false`;
 
       try {
-        const [iconRes, detailsRes, thumbRes] = await Promise.all([
-          fetch(iconApi).then(r => r.json()),
-          fetch(detailsApi).then(r => r.json()),
-          fetch(thumbApi).then(r => r.json())
-        ]);
+        const fetchPromises = [
+          fetch(iconApi).then(r => r.json()).catch(() => ({})),
+          fetch(placeThumbApi).then(r => r.json()).catch(() => ({}))
+        ];
+
+        if (thumbApi) {
+          fetchPromises.push(fetch(thumbApi).then(r => r.json()).catch(() => ({})));
+        }
+
+        const [iconRes, placeThumbRes, thumbRes] = await Promise.all(fetchPromises);
 
         const iconMap = {};
         iconRes.data?.forEach(i => iconMap[i.targetId] = i.imageUrl);
 
-        const detailsMap = {};
-        detailsRes.data?.forEach(d => {
-          detailsMap[d.rootPlaceId] = {
-            name: d.name,
-            builder: d.creator?.name,
-            description: d.description,
-            universeId: d.id
-          };
-          cachedGameDetails[d.rootPlaceId] = detailsMap[d.rootPlaceId];
-        });
-
         const thumbMap = {};
-        thumbRes.data?.forEach(t => {
+        thumbRes?.data?.forEach(t => {
           if (t.thumbnails && t.thumbnails[0]) {
             thumbMap[t.universeId] = t.thumbnails[0].imageUrl;
           }
         });
 
-        return { iconMap, detailsMap, thumbMap };
+        const placeThumbMap = {};
+        placeThumbRes.data?.forEach(p => {
+          placeThumbMap[p.targetId] = p.imageUrl;
+        });
+
+        return { iconMap, thumbMap, placeThumbMap };
       } catch (e) {
-        return { iconMap: {}, detailsMap: {}, thumbMap: {} };
+        return { iconMap: {}, thumbMap: {}, placeThumbMap: {} };
       }
     }
 
@@ -650,9 +649,9 @@
 
       let popHtml = "";
       for (let game of OFFICIAL_POPULAR_GAMES) {
-        const details = popData.detailsMap[game.placeId];
+        const details = cachedGameDetails[game.placeId];
         const iconUrl = popData.iconMap[game.placeId] || "";
-        const thumbUrl = popData.thumbMap[game.universeId] || iconUrl;
+        const thumbUrl = popData.thumbMap[game.universeId] || popData.placeThumbMap[game.placeId] || iconUrl;
         const gameTitle = details?.name || game.defaultName;
         const creatorName = game.creator || details?.builder || "Official Developer";
         const isVerified = !!verifiedGames[game.placeId];
@@ -691,9 +690,9 @@
 
       let userHtml = "";
       for (let game of userGames) {
-        const details = userData.detailsMap[game.placeId];
+        const details = cachedGameDetails[game.placeId];
         const iconUrl = userData.iconMap[game.placeId] || "";
-        const thumbUrl = userData.thumbMap[details?.universeId] || iconUrl;
+        const thumbUrl = userData.thumbMap[details?.universeId] || userData.placeThumbMap[game.placeId] || iconUrl;
         const title = details?.name || `Place #${game.placeId}`;
         const builder = details?.builder || "Community Creator";
         const isVerified = !!verifiedGames[game.placeId];
