@@ -7,236 +7,118 @@
   <style>
     * { box-sizing: border-box; font-family: Arial, sans-serif; }
     body { background-color: #121212; color: #fff; margin: 0; padding: 20px; }
-    
+
     header {
       display: flex; justify-content: space-between; align-items: center;
       max-width: 1000px; margin: 0 auto 20px auto;
       border-bottom: 1px solid #333; padding-bottom: 15px;
       flex-wrap: wrap; gap: 10px;
     }
-    
+
     button, .btn {
       background-color: #00a2ff; color: #fff; border: none;
-      padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      padding: 8px 16px; border-radius: 4px; cursor: pointer;
       font-weight: bold; text-decoration: none; display: inline-block;
-      text-align: center;
     }
-    button:hover, .btn:hover { background-color: #0082cc; }
+    button:hover, .btn:hover { opacity: 0.9; }
 
-    /* Search Bar & Category Controls */
-    .controls-bar {
-      max-width: 1000px; margin: 0 auto 25px auto;
-      display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    }
-    .search-input {
-      flex: 1; min-width: 200px; padding: 10px 14px; background: #1e1e1e;
-      border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 0.95rem;
-    }
-    .filter-btn {
-      background: #1e1e1e; color: #aaa; border: 1px solid #333;
-      padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
-    }
-    .filter-btn.active, .filter-btn:hover { background: #00a2ff; color: #fff; border-color: #00a2ff; }
-
-    .modal {
-      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000;
-    }
-    .modal-content {
-      background: #1e1e1e; padding: 25px; border-radius: 10px;
-      width: 440px; max-width: 90%; max-height: 85vh; overflow-y: auto;
-      display: flex; flex-direction: column; gap: 12px;
-    }
-    .modal-content input, .modal-content textarea, .modal-content select {
-      padding: 10px; background: #2a2a2a; border: 1px solid #444;
-      color: #fff; border-radius: 4px; width: 100%;
+    .search-container { max-width: 1000px; margin: 0 auto 20px auto; display: flex; gap: 10px; }
+    input[type="text"] {
+      flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #333;
+      background: #1e1e1e; color: #fff;
     }
 
-    .container { max-width: 1000px; margin: 0 auto; }
-    h2 { border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 30px; }
+    .categories { max-width: 1000px; margin: 0 auto 20px auto; display: flex; gap: 10px; flex-wrap: wrap; }
+    .filter-btn { background: #222; color: #aaa; }
+    .filter-btn.active { background: #00a2ff; color: #fff; }
 
-    .grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
+    .game-grid {
+      max-width: 1000px; margin: 0 auto; display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;
     }
 
     .game-card {
-      background: #1e1e1e; border: 1px solid #333; border-radius: 10px;
-      overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s; position: relative;
+      background: #1e1e1e; border-radius: 8px; overflow: hidden;
+      display: flex; flex-direction: column; position: relative; border: 1px solid #2a2a2a;
     }
-    .game-card:hover { transform: translateY(-3px); border-color: #00a2ff; }
+    .thumbnail-box { position: relative; width: 100%; padding-top: 56.25%; background: #000; }
+    .thumb { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    .card-body { padding: 12px; display: flex; flex-direction: column; justify-content: space-between; flex: 1; }
+    .card-body h3 { margin: 5px 0; font-size: 16px; }
+    .creator-tag { font-size: 12px; color: #888; margin-bottom: 10px; }
 
-    .star-btn {
-      position: absolute; top: 10px; right: 10px; z-index: 10;
-      background: rgba(0,0,0,0.6); border: none; border-radius: 50%;
-      width: 32px; height: 32px; color: #ffcc00; font-size: 1.2rem;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      padding: 0; transition: transform 0.1s;
-    }
-    .star-btn:hover { transform: scale(1.15); }
-
-    .thumbnail-box { position: relative; width: 100%; height: 150px; background: #2a2a2a; }
-    .thumbnail-box img.thumb { width: 100%; height: 100%; object-fit: cover; }
-
-    .card-body { padding: 25px 15px 15px 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .card-body h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
-    .creator-tag { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
-    
     .category-badge {
-      display: inline-block; background: #333; color: #00a2ff; font-size: 0.7rem;
-      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-left: 4px;
+      display: inline-block; font-size: 10px; background: #333;
+      padding: 2px 6px; border-radius: 3px; color: #aaa; text-transform: uppercase;
     }
     .verified-badge {
-      display: inline-block; background: #00e676; color: #000; font-size: 0.75rem;
-      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content; margin-left: 5px;
+      display: inline-block; font-size: 10px; background: #4caf50;
+      color: #fff; padding: 2px 6px; border-radius: 3px; font-weight: bold;
     }
-    .code-box {
-      background: #111; padding: 10px; font-family: monospace; color: #00e676; border: 1px dashed #444; text-align: center; font-size: 1.1rem; margin: 5px 0;
-    }
-    .server-list {
-      background: #111; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid #333;
-    }
-    .server-item {
-      display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; font-size: 0.85rem;
-    }
-    .server-item:last-child { border-bottom: none; }
 
-    .chat-box {
-      background: #111; border: 1px solid #333; border-radius: 6px;
-      height: 200px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+    .star-btn {
+      position: absolute; top: 8px; right: 8px; z-index: 2;
+      background: rgba(0,0,0,0.6); border: none; color: #ffca28;
+      font-size: 18px; border-radius: 50%; width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
-    .chat-msg { font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; max-width: 80%; }
-    .chat-msg.mine { background: #00a2ff; color: #fff; align-self: flex-end; }
-    .chat-msg.other { background: #2a2a2a; color: #ccc; align-self: flex-start; }
-    .chat-sender { font-size: 0.7rem; color: #aaa; margin-bottom: 2px; }
 
-    /* Timer Status Box */
     .status-box {
-      background: #111; border: 1px solid #333; border-radius: 8px;
-      padding: 15px; text-align: center; color: #00a2ff; font-weight: bold; font-size: 0.95rem;
-      margin-bottom: 15px; grid-column: 1 / -1;
+      grid-column: 1 / -1; background: #1e1e1e; border: 1px solid #333;
+      padding: 20px; text-align: center; border-radius: 8px; color: #aaa;
     }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none; justify-content: center;
+      align-items: center; z-index: 1000;
+    }
+    .modal { background: #1e1e1e; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 15px; font-size: 20px; cursor: pointer; color: #888; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>Roblox Game Hub</h1>
-    <div id="auth-section">
-      <button onclick="openModal('auth-modal')">Sign In / Sign Up</button>
-    </div>
+    <div id="auth-section"></div>
   </header>
 
-  <!-- Search & Category Filter Controls -->
-  <div class="controls-bar">
-    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search any Roblox game or creator..." onkeypress="if(event.key==='Enter') searchGames()">
+  <div class="search-container">
+    <input type="text" id="search-input" placeholder="Search Roblox games or creators...">
     <button onclick="searchGames()">Search</button>
+  </div>
+
+  <div class="categories">
     <button class="filter-btn active" onclick="setCategoryFilter('ALL', this)">All</button>
+    <button class="filter-btn" onclick="setCategoryFilter('RPG', this)">RPG</button>
     <button class="filter-btn" onclick="setCategoryFilter('Fighting', this)">Fighting</button>
-    <button class="filter-btn" onclick="setCategoryFilter('RPG', this)">RPG / Adventure</button>
-    <button class="filter-btn" onclick="setCategoryFilter('Horror', this)">Horror</button>
     <button class="filter-btn" onclick="setCategoryFilter('Social', this)">Social</button>
+    <button class="filter-btn" onclick="setCategoryFilter('Horror', this)">Horror</button>
   </div>
 
-  <div class="container">
-    <!-- Starred Favorites Section -->
-    <div id="favorites-section" style="display:none;">
-      <h2>⭐ Favorite Experiences</h2>
-      <div id="favorites-grid" class="grid"></div>
-    </div>
-
-    <h2>🔥 Popular & Discover Games</h2>
-    <div id="popular-grid" class="grid"></div>
-
-    <h2>🎮 Community Games</h2>
-    <div id="user-grid" class="grid"></div>
-  </div>
+  <div class="game-grid" id="popular-grid"></div>
 
   <!-- Auth Modal -->
-  <div id="auth-modal" class="modal">
-    <div class="modal-content">
-      <h3>Account Access</h3>
-      <input type="text" id="username" placeholder="Website Username">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="handleAuth('login')">Sign In</button>
-      <button onclick="handleAuth('signup')" style="background: #333;">Create Account</button>
-      <button onclick="closeModal('auth-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Roblox Account Verification Modal -->
-  <div id="account-link-modal" class="modal">
-    <div class="modal-content">
-      <h3>Link Roblox Account</h3>
-      <p style="font-size:0.85rem; color:#ccc; margin:0;">Verify your Roblox username to chat and share private servers:</p>
-      <input type="text" id="roblox-username-input" placeholder="Your Roblox Username">
-      <button onclick="generateLinkCode()">1. Prepare Verification</button>
-      
-      <div id="link-code-section" style="display:none;">
-        <p style="font-size:0.8rem; color:#aaa; margin:5px 0 0 0;">2. Add this text to your <b>Roblox Profile Bio</b>:</p>
-        <div id="link-code-display" class="code-box">username</div>
-        <button onclick="verifyRobloxBio()">3. Verify Bio</button>
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal">
+      <span class="close-btn" onclick="closeModal('auth-modal')">&times;</span>
+      <h2>Account Access</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="handleAuth('login')">Sign In</button>
+        <button onclick="handleAuth('signup')" style="background: #333;">Create Account</button>
       </div>
-
-      <button onclick="closeModal('account-link-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Friends & Chat Hub Modal -->
-  <div id="friends-modal" class="modal">
-    <div class="modal-content">
-      <h3>Friends & Chat</h3>
-      <input type="text" id="friend-username" placeholder="Add Friend by Website Username">
-      <button onclick="sendFriendRequest()">Send Friend Request</button>
-      
-      <div id="friends-list-container" style="margin-top:10px;"></div>
-      <button onclick="closeModal('friends-modal')" style="background: transparent; border: 1px solid #555;">Close</button>
-    </div>
-  </div>
-
-  <!-- Active Chat Window Modal -->
-  <div id="chat-modal" class="modal">
-    <div class="modal-content">
-      <h3 id="chat-with-header">Chat</h3>
-      <div id="chat-box" class="chat-box"></div>
-      <div style="display:flex; gap:5px;">
-        <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-        <button onclick="sendChatMessage()">Send</button>
-      </div>
-      <button onclick="closeModal('chat-modal')" style="background: transparent; border: 1px solid #555;">Close Chat</button>
-    </div>
-  </div>
-
-  <!-- Full Info & Private Server Modal -->
-  <div id="info-modal" class="modal">
-    <div class="modal-content">
-      <h2 id="info-title" style="margin:0; border:none;">Game Title</h2>
-      <div id="info-creator" style="font-size:0.85rem; color:#888;"></div>
-      <div id="info-badges"></div>
-
-      <div style="font-size:0.85rem; color:#ccc; margin-top:10px;">
-        <b>Description:</b>
-        <p id="info-description" style="background:#111; padding:10px; border-radius:6px; max-height:150px; overflow-y:auto; font-size:0.8rem; white-space:pre-wrap; color:#aaa; margin-top:5px;"></p>
-      </div>
-
-      <a id="info-play-btn" href="#" class="btn" style="width:100%; margin-top:5px;">Play Game</a>
-
-      <div class="server-list">
-        <b style="font-size:0.9rem;">🔒 Friends Private Servers</b>
-        <div id="private-servers-container" style="margin-top:5px;"></div>
-        <button class="btn" style="width:100%; margin-top:8px; background:#333;" onclick="openAddServerModal()">+ Add Private Server Link</button>
-      </div>
-
-      <button onclick="closeModal('info-modal')" style="background: transparent; border: 1px solid #555;">Close</button>
     </div>
   </div>
 
   <script>
-    const ADMIN_USERNAME = "BrayVR";
+    // Define special site roles by website account username
+    const OWNER_USERNAMES = ["BrayVR"];
+    const ADMIN_USERNAMES = ["administrator"];
+
     const DEFAULT_ICON = "https://tr.rbxcdn.com/53eb9d17fe2910714da296cca30d43f0/150/150/Image/Png";
-    const PROXY_GAMES = "https://games.roproxy.com";
-    const PROXY_SEARCH = "https://games.roproxy.com/v1/games/list";
 
     let fetchedRobloxGames = [];
     let currentUser = localStorage.getItem("activeUser") || null;
@@ -251,6 +133,12 @@
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    function getUserRole(username) {
+      if (OWNER_USERNAMES.includes(username)) return "Owner";
+      if (ADMIN_USERNAMES.includes(username)) return "Administrator";
+      return null;
+    }
 
     function startFetchTimer() {
       searchStartTime = performance.now();
@@ -270,25 +158,38 @@
       elapsedTimeMs = performance.now() - searchStartTime;
     }
 
-    // Dynamic fetch from Roblox API
+    const FALLBACK_GAMES = [
+      { placeId: 2753915549, defaultName: "Blox Fruits", creator: "Gamer Robot Inc", category: "RPG" },
+      { placeId: 189707, defaultName: "Natural Disaster Survival", creator: "Stickmasterluke", category: "RPG" },
+      { placeId: 920587237, defaultName: "Adopt Me!", creator: "DreamCraft", category: "Social" },
+      { placeId: 13772394, defaultName: "Work at a Pizza Place", creator: "Dued1", category: "Social" },
+      { placeId: 286090001, defaultName: "Arsenal", creator: "ROLVe Community", category: "Fighting" },
+      { placeId: 155615604, defaultName: "Prison Life", creator: "Aesthetical", category: "Fighting" },
+      { placeId: 6284583030, defaultName: "Pet Simulator X", creator: "BIG Games", category: "RPG" },
+      { placeId: 6068496247, defaultName: "Doors", creator: "LSPLASH", category: "Horror" }
+    ];
+
     async function loadPopularGames() {
       startFetchTimer();
       try {
-        const res = await fetch(`${PROXY_SEARCH}?sortOrder=Asc&limit=40`);
+        const res = await fetch('/api/games');
         const data = await res.json();
         
-        if (data && data.games) {
+        if (data && data.games && data.games.length > 0) {
           fetchedRobloxGames = data.games.map((g, idx) => ({
             rank: idx + 1,
-            placeId: g.rootPlaceId,
+            placeId: g.rootPlaceId || g.placeId,
             universeId: g.universeId,
             defaultName: g.name,
-            creator: g.builder || "Roblox Creator",
+            creator: g.builder || g.creatorName || "Roblox Creator",
             category: g.genre || "Game"
           }));
+        } else {
+          throw new Error("Empty game list");
         }
       } catch (e) {
-        console.error("Failed to load Roblox games dynamically", e);
+        console.warn("API request failed. Loading fallback catalog:", e);
+        fetchedRobloxGames = FALLBACK_GAMES;
       } finally {
         stopFetchTimer();
         renderAllGames();
@@ -301,23 +202,29 @@
 
       startFetchTimer();
       try {
-        const res = await fetch(`${PROXY_GAMES}/v1/games/list?keyword=${encodeURIComponent(q)}&limit=30`);
+        const res = await fetch(`/api/games?keyword=${encodeURIComponent(q)}`);
         const data = await res.json();
-        if (data && data.games) {
+
+        if (data && data.games && data.games.length > 0) {
           fetchedRobloxGames = data.games.map((g, idx) => ({
             rank: idx + 1,
-            placeId: g.rootPlaceId,
+            placeId: g.rootPlaceId || g.placeId,
             universeId: g.universeId,
             defaultName: g.name,
-            creator: g.builder || "Roblox Creator",
+            creator: g.builder || g.creatorName || "Roblox Creator",
             category: g.genre || "Game"
           }));
         } else {
-          fetchedRobloxGames = [];
+          fetchedRobloxGames = FALLBACK_GAMES.filter(g => 
+            g.defaultName.toLowerCase().includes(q.toLowerCase()) || 
+            g.creator.toLowerCase().includes(q.toLowerCase())
+          );
         }
       } catch (e) {
-        console.error("Search error:", e);
-        fetchedRobloxGames = [];
+        console.warn("Search API failed:", e);
+        fetchedRobloxGames = FALLBACK_GAMES.filter(g => 
+          g.defaultName.toLowerCase().includes(q.toLowerCase())
+        );
       } finally {
         stopFetchTimer();
         renderAllGames();
@@ -329,9 +236,12 @@
       if (currentUser) {
         let verifiedUsers = getStorage("verified_roblox_users", {});
         let linkedRbx = verifiedUsers[currentUser];
+        let role = getUserRole(currentUser);
+
+        let roleTag = role ? `, <b>${role}</b>` : '';
 
         authSec.innerHTML = `
-          <span>Welcome, <b>${currentUser}</b> ${linkedRbx ? `<span class="verified-badge">✓ @${linkedRbx}</span>` : ''}</span>
+          <span>Welcome${roleTag} ${linkedRbx ? `<span class="verified-badge">✓ @${linkedRbx}</span>` : ''}</span>
           ${!linkedRbx ? `<button onclick="openModal('account-link-modal')" style="background:#ff9800; color:#000;">Link Roblox</button>` : ''}
           <button onclick="openModal('friends-modal'); renderFriendsList();">Friends & Chat</button>
           <button onclick="logout()" style="background: #e53935;">Sign Out</button>
