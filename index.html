@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Game Hub</title>
+  <title>Roblox Game Hub -- Official</title>
   <style>
     * { box-sizing: border-box; font-family: Arial, sans-serif; }
     body { background-color: #121212; color: #fff; margin: 0; padding: 20px; }
@@ -23,7 +23,7 @@
     button:hover, .btn:hover { opacity: 0.9; }
 
     .search-container { max-width: 1000px; margin: 0 auto 20px auto; display: flex; gap: 10px; }
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #333;
       background: #1e1e1e; color: #fff;
     }
@@ -113,6 +113,17 @@
     </div>
   </div>
 
+  <!-- User Verified Games Modal -->
+  <div class="modal-overlay" id="my-games-modal">
+    <div class="modal" style="max-width: 500px;">
+      <span class="close-btn" onclick="closeModal('my-games-modal')">&times;</span>
+      <h2>My Profile Games</h2>
+      <div id="my-games-list" style="margin-top: 15px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+        <!-- Games load here -->
+      </div>
+    </div>
+  </div>
+
   <script>
     // Define special site roles by website account username
     const OWNER_USERNAMES = ["BrayVR"];
@@ -166,7 +177,9 @@
       { placeId: 286090001, defaultName: "Arsenal", creator: "ROLVe Community", category: "Fighting" },
       { placeId: 155615604, defaultName: "Prison Life", creator: "Aesthetical", category: "Fighting" },
       { placeId: 6284583030, defaultName: "Pet Simulator X", creator: "BIG Games", category: "RPG" },
-      { placeId: 6068496247, defaultName: "Doors", creator: "LSPLASH", category: "Horror" }
+      { placeId: 6068496247, defaultName: "Doors", creator: "LSPLASH", category: "Horror" },
+      { placeId: 3527629282, defaultName: "Brookhaven RP", creator: "Wolfpaq", category: "Social" },
+      { placeId: 142823291, defaultName: "Murder Mystery 2", creator: "Nikilis", category: "Horror" }
     ];
 
     async function loadPopularGames() {
@@ -243,6 +256,7 @@
         authSec.innerHTML = `
           <span>Welcome${roleTag} ${linkedRbx ? `<span class="verified-badge">✓ @${linkedRbx}</span>` : ''}</span>
           ${!linkedRbx ? `<button onclick="openModal('account-link-modal')" style="background:#ff9800; color:#000;">Link Roblox</button>` : ''}
+          <button onclick="renderMyVerifiedGames()">My Games</button>
           <button onclick="openModal('friends-modal'); renderFriendsList();">Friends & Chat</button>
           <button onclick="logout()" style="background: #e53935;">Sign Out</button>
         `;
@@ -250,6 +264,54 @@
         authSec.innerHTML = `<button onclick="openModal('auth-modal')">Sign In / Sign Up</button>`;
       }
       loadPopularGames();
+    }
+
+    async function renderMyVerifiedGames() {
+      if (!currentUser) return alert("Please sign in first.");
+
+      const listContainer = document.getElementById("my-games-list");
+      listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">Loading profile games...</div>`;
+      openModal('my-games-modal');
+
+      let verifiedUsers = getStorage("verified_roblox_users", {});
+      let linkedRbxUsername = verifiedUsers[currentUser] || currentUser;
+      const verifiedGames = getStorage("verified_games", {});
+
+      try {
+        const res = await fetch(`/api/user-games?username=${encodeURIComponent(linkedRbxUsername)}`);
+        const data = await res.json();
+
+        let userGames = data.games || [];
+
+        if (userGames.length === 0) {
+          userGames = fetchedRobloxGames.filter(g => 
+            g.creator.toLowerCase() === linkedRbxUsername.toLowerCase()
+          );
+        }
+
+        if (userGames.length === 0) {
+          listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">No public or verified games found for @${linkedRbxUsername}.</div>`;
+          return;
+        }
+
+        listContainer.innerHTML = userGames.map(g => {
+          const isVerified = !!verifiedGames[g.placeId] || g.isVerified;
+          return `
+            <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="display: block;">${g.name || g.defaultName}</strong>
+                <span class="category-badge">${g.genre || g.category || "Game"}</span>
+                ${isVerified ? '<span class="verified-badge">✓ VERIFIED</span>' : ''}
+              </div>
+              <a href="roblox://placeid=${g.placeId || g.rootPlaceId}" class="btn" style="padding: 5px 10px; font-size: 12px;">Play</a>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error("Error fetching user games:", err);
+        listContainer.innerHTML = `<div style="color: #ff5555; text-align: center; padding: 10px;">Failed to load games from Roblox profile.</div>`;
+      }
     }
 
     function handleAuth(type) {
