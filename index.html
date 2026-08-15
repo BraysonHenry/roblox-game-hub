@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Game Hub -- Official</title>
+  <title>Roblox Game Hub</title>
   <style>
     * { box-sizing: border-box; font-family: Arial, sans-serif; }
     body { background-color: #121212; color: #fff; margin: 0; padding: 20px; }
@@ -125,18 +125,12 @@
   </div>
 
   <script>
-    // Define special site roles by website account username
     const OWNER_USERNAMES = ["BrayVR"];
     const ADMIN_USERNAMES = ["administrator"];
-
-    const DEFAULT_ICON = "https://tr.rbxcdn.com/53eb9d17fe2910714da296cca30d43f0/150/150/Image/Png";
 
     let fetchedRobloxGames = [];
     let currentUser = localStorage.getItem("activeUser") || null;
     let activeCategory = "ALL";
-    let cachedGameDetails = {};
-    
-    // Timer Variables
     let searchStartTime = 0;
     let elapsedTimeMs = 0;
     let timerInterval = null;
@@ -201,7 +195,6 @@
           throw new Error("Empty game list");
         }
       } catch (e) {
-        console.warn("API request failed. Loading fallback catalog:", e);
         fetchedRobloxGames = FALLBACK_GAMES;
       } finally {
         stopFetchTimer();
@@ -234,7 +227,6 @@
           );
         }
       } catch (e) {
-        console.warn("Search API failed:", e);
         fetchedRobloxGames = FALLBACK_GAMES.filter(g => 
           g.defaultName.toLowerCase().includes(q.toLowerCase())
         );
@@ -270,47 +262,70 @@
       if (!currentUser) return alert("Please sign in first.");
 
       const listContainer = document.getElementById("my-games-list");
-      listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">Loading profile games...</div>`;
+      listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">Searching Roblox profile...</div>`;
       openModal('my-games-modal');
 
       let verifiedUsers = getStorage("verified_roblox_users", {});
-      let linkedRbxUsername = verifiedUsers[currentUser] || currentUser;
-      const verifiedGames = getStorage("verified_games", {});
+      let targetUsername = verifiedUsers[currentUser] || currentUser;
 
       try {
-        const res = await fetch(`/api/user-games?username=${encodeURIComponent(linkedRbxUsername)}`);
-        const data = await res.json();
+        // Step 1: Find User ID from Roblox API using AllOrigins Proxy
+        const userReq = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://users.roblox.com/v1/usernames/users`)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usernames: [targetUsername], excludeBannedUsers: true })
+        });
+        const userData = await userReq.json();
+        const parsedUser = JSON.parse(userData.contents);
 
-        let userGames = data.games || [];
-
-        if (userGames.length === 0) {
-          userGames = fetchedRobloxGames.filter(g => 
-            g.creator.toLowerCase() === linkedRbxUsername.toLowerCase()
-          );
+        if (!parsedUser.data || parsedUser.data.length === 0) {
+          throw new Error("Roblox user not found");
         }
 
-        if (userGames.length === 0) {
-          listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">No public or verified games found for @${linkedRbxUsername}.</div>`;
+        const robloxUserId = parsedUser.data[0].id;
+
+        // Step 2: Retrieve public games created by User ID
+        const gamesReq = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://games.roblox.com/v2/users/${robloxUserId}/games?accessFilter=Public&limit=50`)}`);
+        const gamesData = await gamesReq.json();
+        const parsedGames = JSON.parse(gamesData.contents);
+
+        const gamesList = parsedGames.data || [];
+
+        if (gamesList.length === 0) {
+          listContainer.innerHTML = `<div style="color: #aaa; text-align: center; padding: 10px;">No public Roblox games found on account @${targetUsername}.</div>`;
           return;
         }
 
-        listContainer.innerHTML = userGames.map(g => {
-          const isVerified = !!verifiedGames[g.placeId] || g.isVerified;
-          return `
-            <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <strong style="display: block;">${g.name || g.defaultName}</strong>
-                <span class="category-badge">${g.genre || g.category || "Game"}</span>
-                ${isVerified ? '<span class="verified-badge">✓ VERIFIED</span>' : ''}
-              </div>
-              <a href="roblox://placeid=${g.placeId || g.rootPlaceId}" class="btn" style="padding: 5px 10px; font-size: 12px;">Play</a>
+        listContainer.innerHTML = gamesList.map(g => `
+          <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="display: block;">${g.name}</strong>
+              <span class="category-badge">${g.genre || "Game"}</span>
+              <span class="verified-badge">✓ VERIFIED</span>
             </div>
-          `;
-        }).join('');
+            <a href="roblox://placeid=${g.rootPlaceId}" class="btn" style="padding: 5px 10px; font-size: 12px;">Play</a>
+          </div>
+        `).join('');
 
       } catch (err) {
-        console.error("Error fetching user games:", err);
-        listContainer.innerHTML = `<div style="color: #ff5555; text-align: center; padding: 10px;">Failed to load games from Roblox profile.</div>`;
+        console.warn("Direct Roblox lookup failed, using local match:", err);
+        // Local fallback check
+        const localMatches = fetchedRobloxGames.filter(g => g.creator.toLowerCase() === targetUsername.toLowerCase());
+        
+        if (localMatches.length > 0) {
+          listContainer.innerHTML = localMatches.map(g => `
+            <div style="background: #2a2a2a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="display: block;">${g.defaultName}</strong>
+                <span class="category-badge">${g.category || "Game"}</span>
+                <span class="verified-badge">✓ VERIFIED</span>
+              </div>
+              <a href="roblox://placeid=${g.placeId}" class="btn" style="padding: 5px 10px; font-size: 12px;">Play</a>
+            </div>
+          `).join('');
+        } else {
+          listContainer.innerHTML = `<div style="color: #ff5555; text-align: center; padding: 10px;">Could not locate public games for @${targetUsername}. Make sure your logged in account or linked Roblox handle matches your exact Roblox username.</div>`;
+        }
       }
     }
 
