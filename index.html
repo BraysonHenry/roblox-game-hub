@@ -135,7 +135,8 @@
 
   <!-- Search & Category Filter Controls -->
   <div class="controls-bar">
-    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search experiences or creators..." oninput="filterGames()">
+    <input type="text" id="search-input" class="search-input" placeholder="🔍 Search any Roblox game or creator..." onkeypress="if(event.key==='Enter') searchGames()">
+    <button onclick="searchGames()">Search</button>
     <button class="filter-btn active" onclick="setCategoryFilter('ALL', this)">All</button>
     <button class="filter-btn" onclick="setCategoryFilter('Fighting', this)">Fighting</button>
     <button class="filter-btn" onclick="setCategoryFilter('RPG', this)">RPG / Adventure</button>
@@ -150,7 +151,7 @@
       <div id="favorites-grid" class="grid"></div>
     </div>
 
-    <h2>🔥 Popular Experiences</h2>
+    <h2>🔥 Popular & Discover Games</h2>
     <div id="popular-grid" class="grid"></div>
 
     <h2>🎮 Community Games</h2>
@@ -286,55 +287,13 @@
     </div>
   </div>
 
-  <!-- Report User Modal -->
-  <div id="report-modal" class="modal">
-    <div class="modal-content">
-      <h3>⚠️ Report Account</h3>
-      <p style="font-size:0.85rem; color:#ccc; margin:0;">
-        Reporting account: <b id="report-target-user" style="color:#ff5555;">User</b>
-      </p>
-      
-      <select id="report-reason">
-        <option value="Scamming / Phishing">Scamming / Phishing links</option>
-        <option value="Impersonation">Impersonation</option>
-        <option value="Harassment">Harassment or bad language</option>
-        <option value="Fake Private Server">Fake / Broken Private Server</option>
-        <option value="Other">Other suspicious activity</option>
-      </select>
-
-      <textarea id="report-details" placeholder="Provide details or paste proof..." rows="3"></textarea>
-
-      <button onclick="submitReport()" style="background:#e53935;">Submit Report</button>
-      <button onclick="closeModal('report-modal')" style="background:transparent; border:1px solid #555;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Admin Moderation Panel Modal -->
-  <div id="admin-modal" class="modal">
-    <div class="modal-content" style="width: 600px; max-width: 95%;">
-      <h3 style="color:#ff5555; margin:0;">🛡️ Admin Moderation Dashboard</h3>
-      <p style="font-size:0.8rem; color:#aaa; margin:5px 0 15px 0;">Review flagged users and permanently delete scammer accounts.</p>
-      
-      <div id="reports-list-container" style="max-height: 300px; overflow-y: auto;"></div>
-
-      <button onclick="closeModal('admin-modal')" style="background: transparent; border: 1px solid #555; margin-top:10px;">Close Dashboard</button>
-    </div>
-  </div>
-
   <script>
     const ADMIN_USERNAME = "BrayVR";
     const DEFAULT_ICON = "https://tr.rbxcdn.com/53eb9d17fe2910714da296cca30d43f0/150/150/Image/Png";
+    const PROXY_GAMES = "https://games.roproxy.com";
+    const PROXY_SEARCH = "https://games.roproxy.com/v1/games/list";
 
-    const OFFICIAL_POPULAR_GAMES = [
-      { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc", category: "RPG" },
-      { rank: 2, placeId: 920587237, universeId: 35142277, defaultName: "Adopt Me!", creator: "Uplift Games", category: "Social" },
-      { rank: 3, placeId: 4924922222, universeId: 1625373733, defaultName: "Brookhaven RP", creator: "Wolfpaq", category: "Social" },
-      { rank: 4, placeId: 17625359962, universeId: 6035872082, defaultName: "RIVALS", creator: "Nosniy Games", category: "Fighting" },
-      { rank: 5, placeId: 662417684, universeId: 23169942, defaultName: "Murder Mystery 2", creator: "Nikilis", category: "Horror" },
-      { rank: 6, placeId: 10873380283, universeId: 4005886291, defaultName: "Forsaken", creator: "Forsaken Dev Team", category: "Horror" },
-      { rank: 7, placeId: 8982709021, universeId: 3122183203, defaultName: "DOORS", creator: "LSPLASH", category: "Horror" }
-    ];
-
+    let fetchedRobloxGames = [];
     let currentUser = localStorage.getItem("activeUser") || null;
     let syncChannel = new BroadcastChannel("roblox_hub_sync");
     let activeVerifyPlaceId = null;
@@ -343,25 +302,56 @@
     let activeChatFriend = null;
     let pendingRequestSender = null;
     let currentLinkCode = "";
-    let activeReportTarget = null;
     let activeCategory = "ALL";
     let cachedGameDetails = {};
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-    syncChannel.onmessage = (e) => {
-      const data = e.data;
-      if (data.type === "FRIEND_REQUEST" && data.target === currentUser) {
-        pendingRequestSender = data.from;
-        document.getElementById("request-sender-name").innerText = data.from;
-        openModal("request-modal");
-      } else if (data.type === "CHAT_MESSAGE" && data.target === currentUser) {
-        if (activeChatFriend === data.from) {
-          renderChatMessages();
+    // Dynamic fetch from Roblox API
+    async function loadPopularGames() {
+      try {
+        const res = await fetch(`${PROXY_SEARCH}?sortOrder=Asc&limit=40`);
+        const data = await res.json();
+        
+        if (data && data.games) {
+          fetchedRobloxGames = data.games.map((g, idx) => ({
+            rank: idx + 1,
+            placeId: g.rootPlaceId,
+            universeId: g.universeId,
+            defaultName: g.name,
+            creator: g.builder || "Roblox Creator",
+            category: g.genre || "Game"
+          }));
         }
+      } catch (e) {
+        console.error("Failed to load Roblox games dynamically", e);
       }
-    };
+      renderAllGames();
+    }
+
+    async function searchGames() {
+      const q = document.getElementById("search-input").value.trim();
+      if (!q) return loadPopularGames();
+
+      try {
+        const res = await fetch(`${PROXY_GAMES}/v1/games/list?keyword=${encodeURIComponent(q)}&limit=30`);
+        const data = await res.json();
+        if (data && data.games) {
+          fetchedRobloxGames = data.games.map((g, idx) => ({
+            rank: idx + 1,
+            placeId: g.rootPlaceId,
+            universeId: g.universeId,
+            defaultName: g.name,
+            creator: g.builder || "Roblox Creator",
+            category: g.genre || "Game"
+          }));
+        }
+      } catch (e) {
+        console.error("Search error:", e);
+      }
+      renderAllGames();
+    }
 
     function updateUI() {
       const authSec = document.getElementById("auth-section");
@@ -374,13 +364,12 @@
           ${!linkedRbx ? `<button onclick="openModal('account-link-modal')" style="background:#ff9800; color:#000;">Link Roblox</button>` : ''}
           <button onclick="openModal('friends-modal'); renderFriendsList();">Friends & Chat</button>
           <button onclick="openModal('game-modal')">+ Add Game</button>
-          ${currentUser === ADMIN_USERNAME ? `<button onclick="openAdminDashboard()" style="background:#ff3333;">🛡️ Admin Panel</button>` : ''}
           <button onclick="logout()" style="background: #e53935;">Sign Out</button>
         `;
       } else {
         authSec.innerHTML = `<button onclick="openModal('auth-modal')">Sign In / Sign Up</button>`;
       }
-      renderAllGames();
+      loadPopularGames();
     }
 
     function handleAuth(type) {
@@ -427,223 +416,7 @@
       activeCategory = category;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       if (btnElement) btnElement.classList.add('active');
-      filterGames();
-    }
-
-    function filterGames() {
       renderAllGames();
-    }
-
-    function generateLinkCode() {
-      const rbxUser = document.getElementById("roblox-username-input").value.trim();
-      if (!rbxUser) return alert("Enter your Roblox username.");
-      
-      currentLinkCode = rbxUser;
-      document.getElementById("link-code-display").innerText = currentLinkCode;
-      document.getElementById("link-code-section").style.display = "block";
-    }
-
-    async function verifyRobloxBio() {
-      const rbxUser = document.getElementById("roblox-username-input").value.trim();
-      if (!rbxUser) return alert("Enter your Roblox username.");
-
-      try {
-        const response = await fetch('/api/verify-bio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: rbxUser })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          return alert(data.error || "Failed to find Roblox account.");
-        }
-
-        if (data.description && data.description.toLowerCase().includes(rbxUser.toLowerCase())) {
-          let verifiedUsers = getStorage("verified_roblox_users", {});
-          verifiedUsers[currentUser] = rbxUser;
-          setStorage("verified_roblox_users", verifiedUsers);
-
-          alert(`✅ Account linked! Verified as @${rbxUser}`);
-          closeModal("account-link-modal");
-          updateUI();
-        } else {
-          alert(`❌ Could not find "${rbxUser}" in your Roblox Bio.`);
-        }
-      } catch (e) {
-        console.error(e);
-        alert("Error verifying Roblox bio. Please try again.");
-      }
-    }
-
-    function sendFriendRequest() {
-      const targetUser = document.getElementById("friend-username").value.trim();
-      if (!targetUser) return;
-      if (targetUser === currentUser) return alert("You cannot add yourself.");
-
-      syncChannel.postMessage({ type: "FRIEND_REQUEST", from: currentUser, target: targetUser });
-      alert(`Friend request sent to ${targetUser}!`);
-      document.getElementById("friend-username").value = "";
-    }
-
-    function acceptFriendRequest() {
-      if (!pendingRequestSender) return;
-
-      let friendsMap = getStorage("site_friends", {});
-      let myFriends = friendsMap[currentUser] || [];
-      let senderFriends = friendsMap[pendingRequestSender] || [];
-
-      if (!myFriends.includes(pendingRequestSender)) myFriends.push(pendingRequestSender);
-      if (!senderFriends.includes(currentUser)) senderFriends.push(currentUser);
-
-      friendsMap[currentUser] = myFriends;
-      friendsMap[pendingRequestSender] = senderFriends;
-      setStorage("site_friends", friendsMap);
-
-      alert(`Accepted friend request from ${pendingRequestSender}!`);
-      closeModal("request-modal");
-      renderFriendsList();
-    }
-
-    function renderFriendsList() {
-      let friendsMap = getStorage("site_friends", {});
-      let userFriends = friendsMap[currentUser] || [];
-      const container = document.getElementById("friends-list-container");
-
-      if (userFriends.length === 0) {
-        container.innerHTML = "<p style='color:#777; font-size:0.85rem;'>No friends added yet.</p>";
-      } else {
-        let html = "<b>Your Friends:</b><div style='margin-top:8px;'>";
-        userFriends.forEach(f => {
-          html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; background:#111; padding:6px 10px; border-radius:4px;">
-              <span>${f}</span>
-              <div style="display:flex; gap:5px;">
-                <button onclick="openChat('${f}')" style="padding:4px 8px; font-size:0.75rem;">Chat</button>
-                <button onclick="openReportModal('${f}')" style="padding:4px 8px; font-size:0.75rem; background:#ff5555;">Report</button>
-              </div>
-            </div>
-          `;
-        });
-        html += "</div>";
-        container.innerHTML = html;
-      }
-    }
-
-    function openChat(friendUsername) {
-      activeChatFriend = friendUsername;
-      document.getElementById("chat-with-header").innerText = `Chat with ${friendUsername}`;
-      closeModal("friends-modal");
-      openModal("chat-modal");
-      renderChatMessages();
-    }
-
-    function sendChatMessage() {
-      const input = document.getElementById("chat-input");
-      const msgText = input.value.trim();
-      if (!msgText || !activeChatFriend) return;
-
-      let chatKey = [currentUser, activeChatFriend].sort().join("_CHAT_");
-      let allChats = getStorage("site_chats", {});
-      let thread = allChats[chatKey] || [];
-
-      thread.push({ sender: currentUser, text: msgText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
-      allChats[chatKey] = thread;
-      setStorage("site_chats", allChats);
-
-      syncChannel.postMessage({ type: "CHAT_MESSAGE", from: currentUser, target: activeChatFriend });
-
-      input.value = "";
-      renderChatMessages();
-    }
-
-    function renderChatMessages() {
-      if (!activeChatFriend) return;
-      let chatKey = [currentUser, activeChatFriend].sort().join("_CHAT_");
-      let allChats = getStorage("site_chats", {});
-      let thread = allChats[chatKey] || [];
-      const box = document.getElementById("chat-box");
-
-      let html = "";
-      thread.forEach(m => {
-        let isMine = m.sender === currentUser;
-        html += `
-          <div class="chat-msg ${isMine ? 'mine' : 'other'}">
-            <div class="chat-sender">${isMine ? 'You' : m.sender} • ${m.time}</div>
-            <div>${m.text}</div>
-          </div>
-        `;
-      });
-      box.innerHTML = html;
-      box.scrollTop = box.scrollHeight;
-    }
-
-    function submitGame() {
-      const inputId = parseInt(document.getElementById("place-id").value.trim());
-      const category = document.getElementById("game-category-input").value;
-      if (!inputId) return alert("Enter a valid Place ID");
-
-      const isOfficial = OFFICIAL_POPULAR_GAMES.some(g => g.placeId === inputId);
-      if (isOfficial) return alert("This experience is on the Official Popular Chart.");
-
-      let userGames = getStorage("user_games", []);
-      if (!userGames.some(g => g.placeId === inputId)) {
-        userGames.push({ placeId: inputId, addedBy: currentUser, category: category });
-        setStorage("user_games", userGames);
-      }
-
-      closeModal("game-modal");
-      renderAllGames();
-    }
-
-    function startVerification(placeId, title, e) {
-      if (e) e.stopPropagation();
-      if (!currentUser) return alert("Please sign in first to claim/verify a game.");
-      
-      activeVerifyPlaceId = placeId;
-      activeVerifyCode = currentUser;
-      
-      document.getElementById("verify-game-name").innerText = title;
-      document.getElementById("generated-code").innerText = activeVerifyCode;
-      openModal("verify-modal");
-    }
-
-    async function checkVerification() {
-      if (!activeVerifyPlaceId) return;
-
-      const roGamesProxy = "https://games.roproxy.com";
-      const roApiProxy = "https://apis.roproxy.com";
-      const officialGame = OFFICIAL_POPULAR_GAMES.find(g => g.placeId === activeVerifyPlaceId);
-      let universeId = officialGame?.universeId;
-
-      if (!universeId) {
-        try {
-          const uRes = await fetch(`${roApiProxy}/universes/v1/places/${activeVerifyPlaceId}/universe`).then(r => r.json());
-          universeId = uRes.universeId;
-        } catch (e) {}
-      }
-
-      if (!universeId) return alert("Failed to fetch game details from Roblox.");
-
-      try {
-        const detailsRes = await fetch(`${roGamesProxy}/v1/games?universeIds=${universeId}`).then(r => r.json());
-        const gameData = detailsRes.data?.[0];
-
-        if (gameData && gameData.description && gameData.description.toLowerCase().includes(activeVerifyCode.toLowerCase())) {
-          let verifiedGames = getStorage("verified_games", {});
-          verifiedGames[activeVerifyPlaceId] = { verifiedBy: currentUser, verifiedAt: new Date().toLocaleDateString() };
-          setStorage("verified_games", verifiedGames);
-
-          alert("✅ Verification successful! Ownership confirmed.");
-          closeModal("verify-modal");
-          renderAllGames();
-        } else {
-          alert(`❌ Could not find "${activeVerifyCode}" in game description.`);
-        }
-      } catch (e) {
-        alert("Error checking verification status.");
-      }
     }
 
     function openGameInfo(placeId) {
@@ -691,174 +464,9 @@
       }
     }
 
-    function openAddServerModal() {
-      if (!currentUser) return alert("Please sign in to share private servers.");
-      openModal("add-server-modal");
-    }
-
-    function savePrivateServer() {
-      const link = document.getElementById("server-link-input").value.trim();
-      if (!link) return alert("Enter a valid private server link.");
-
-      let allServers = getStorage("private_servers", {});
-      let gameServers = allServers[selectedGamePlaceId] || [];
-
-      gameServers.push({ owner: currentUser, link: link });
-      allServers[selectedGamePlaceId] = gameServers;
-      setStorage("private_servers", allServers);
-
-      document.getElementById("server-link-input").value = "";
-      closeModal("add-server-modal");
-      renderPrivateServers(selectedGamePlaceId);
-    }
-
-    function openReportModal(targetUsername) {
-      if (!currentUser) return alert("Please sign in to report accounts.");
-      if (targetUsername === currentUser) return alert("You cannot report yourself.");
-
-      activeReportTarget = targetUsername;
-      document.getElementById("report-target-user").innerText = targetUsername;
-      document.getElementById("report-details").value = "";
-      openModal("report-modal");
-    }
-
-    function submitReport() {
-      const reason = document.getElementById("report-reason").value;
-      const details = document.getElementById("report-details").value.trim();
-
-      if (!activeReportTarget) return;
-
-      let reports = getStorage("site_reports", []);
-      
-      reports.push({
-        id: Date.now(),
-        reportedUser: activeReportTarget,
-        reportedBy: currentUser,
-        reason: reason,
-        details: details || "No extra details provided.",
-        timestamp: new Date().toLocaleString()
-      });
-
-      setStorage("site_reports", reports);
-      
-      alert(`✅ Report submitted against ${activeReportTarget}. Admins will review it.`);
-      closeModal("report-modal");
-    }
-
-    function openAdminDashboard() {
-      if (currentUser !== ADMIN_USERNAME) {
-        return alert("Access Denied: Admin privileges required.");
-      }
-
-      renderAdminReports();
-      openModal("admin-modal");
-    }
-
-    function renderAdminReports() {
-      const container = document.getElementById("reports-list-container");
-      let reports = getStorage("site_reports", []);
-
-      if (reports.length === 0) {
-        container.innerHTML = "<p style='color:#888; text-align:center;'>No active reports. Everything looks clean!</p>";
-        return;
-      }
-
-      let html = "";
-      reports.forEach(r => {
-        html += `
-          <div style="background:#111; border:1px solid #333; padding:12px; border-radius:6px; margin-bottom:10px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <b style="color:#ff5555; font-size:1rem;">⚠️ ${r.reportedUser}</b>
-              <span style="font-size:0.75rem; color:#777;">${r.timestamp}</span>
-            </div>
-            <div style="font-size:0.85rem; color:#ccc; margin-top:5px;">
-              <b>Reason:</b> ${r.reason}<br>
-              <b>Details:</b> ${r.details}<br>
-              <span style="color:#777; font-size:0.75rem;">Reported by: ${r.reportedBy}</span>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:10px;">
-              <button onclick="adminDeleteAccount('${r.reportedUser}')" style="background:#e53935; padding:4px 8px; font-size:0.75rem;">Delete & Ban Account</button>
-              <button onclick="dismissReport(${r.id})" style="background:#444; padding:4px 8px; font-size:0.75rem;">Dismiss Report</button>
-            </div>
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-    }
-
-    function adminDeleteAccount(username) {
-      if (!confirm(`Are you sure you want to completely delete ${username}'s account?`)) return;
-
-      let users = getStorage("site_users", {});
-      delete users[username];
-      setStorage("site_users", users);
-
-      let verified = getStorage("verified_roblox_users", {});
-      delete verified[username];
-      setStorage("verified_roblox_users", verified);
-
-      let games = getStorage("user_games", []);
-      games = games.filter(g => g.addedBy !== username);
-      setStorage("user_games", games);
-
-      let reports = getStorage("site_reports", []);
-      reports = reports.filter(r => r.reportedUser !== username);
-      setStorage("site_reports", reports);
-
-      alert(`🚫 Account "${username}" and all their submitted content have been deleted.`);
-      renderAdminReports();
-      renderAllGames();
-    }
-
-    function dismissReport(reportId) {
-      let reports = getStorage("site_reports", []);
-      reports = reports.filter(r => r.id !== reportId);
-      setStorage("site_reports", reports);
-      renderAdminReports();
-    }
-
-    async function fetchGameData(gamesList) {
-      const placeIds = gamesList.map(g => g.placeId).filter(Boolean).join(",");
-      const universeIds = gamesList.map(g => g.universeId).filter(Boolean).join(",");
-
-      try {
-        const response = await fetch(`/api/thumbnails?placeIds=${placeIds}&universeIds=${universeIds}`);
-        const data = await response.json();
-
-        const iconMap = {};
-        data.icons?.forEach(i => {
-          if (i.targetId && i.imageUrl) iconMap[i.targetId] = i.imageUrl;
-        });
-
-        const thumbMap = {};
-        data.universeThumbs?.forEach(t => {
-          if (t.universeId && t.thumbnails?.[0]?.imageUrl) {
-            thumbMap[t.universeId] = t.thumbnails[0].imageUrl;
-          }
-        });
-
-        const placeThumbMap = {};
-        data.placeThumbs?.forEach(p => {
-          if (p.targetId && p.imageUrl) placeThumbMap[p.targetId] = p.imageUrl;
-        });
-
-        return { iconMap, thumbMap, placeThumbMap };
-      } catch (e) {
-        console.error("Thumbnail fetch error:", e);
-        return { iconMap: {}, thumbMap: {}, placeThumbMap: {} };
-      }
-    }
-
-    function createGameCardHtml(game, thumbData, verifiedGames, userFavs, isOfficial) {
-      const details = cachedGameDetails[game.placeId];
-      const iconUrl = thumbData.iconMap[game.placeId] || thumbData.placeThumbMap[game.placeId] || DEFAULT_ICON;
-      const thumbUrl = thumbData.thumbMap[game.universeId] || thumbData.placeThumbMap[game.placeId] || iconUrl;
-      const gameTitle = details?.name || game.defaultName || `Place #${game.placeId}`;
-      const creatorName = game.creator || details?.builder || game.addedBy || "Developer";
-      const isVerified = !!verifiedGames[game.placeId];
+    function createGameCardHtml(game, verifiedGames, userFavs, isOfficial) {
       const isFav = userFavs.includes(game.placeId);
-      const category = game.category || "Game";
+      const isVerified = !!verifiedGames[game.placeId];
 
       return `
         <div class="game-card" onclick="openGameInfo(${game.placeId})">
@@ -866,80 +474,35 @@
             ${isFav ? '★' : '☆'}
           </button>
           <div class="thumbnail-box">
-            <img class="thumb" src="${thumbUrl}" alt="${gameTitle}">
-            <img class="icon" src="${iconUrl}" alt="Icon">
+            <img class="thumb" src="https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=${game.placeId}&fmt=png&wd=420&ht=230" alt="${game.defaultName}">
           </div>
           <div class="card-body">
             <div>
-              ${isOfficial ? `<span class="badge">#${game.rank} POPULAR</span>` : ''}
-              <span class="category-badge">${category}</span>
-              ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
-              <h3>${gameTitle}</h3>
-              <div class="creator-tag">By ${creatorName}</div>
+              <span class="category-badge">${game.category || "Game"}</span>
+              ${isVerified ? '<span class="verified-badge">✓ VERIFIED</span>' : ''}
+              <h3>${game.defaultName}</h3>
+              <div class="creator-tag">By ${game.creator}</div>
             </div>
             <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
-            ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
           </div>
         </div>
       `;
     }
 
-    async function renderAllGames() {
-      const searchQuery = document.getElementById("search-input")?.value.toLowerCase() || "";
+    function renderAllGames() {
       const verifiedGames = getStorage("verified_games", {});
       const userFavs = currentUser ? getStorage(`favs_${currentUser}`, []) : [];
 
-      // Filter Popular Games
-      let filteredPopular = OFFICIAL_POPULAR_GAMES.filter(g => {
-        const titleMatch = g.defaultName.toLowerCase().includes(searchQuery) || g.creator.toLowerCase().includes(searchQuery);
-        const catMatch = activeCategory === "ALL" || g.category === activeCategory;
-        return titleMatch && catMatch;
+      let filteredPopular = fetchedRobloxGames.filter(g => {
+        return activeCategory === "ALL" || (g.category && g.category.toLowerCase().includes(activeCategory.toLowerCase()));
       });
 
-      // Filter User Games
-      let userGames = getStorage("user_games", []);
-      let filteredUser = userGames.filter(g => {
-        const details = cachedGameDetails[g.placeId];
-        const title = details?.name || `Place #${g.placeId}`;
-        const builder = details?.builder || g.addedBy || "";
-        const titleMatch = title.toLowerCase().includes(searchQuery) || builder.toLowerCase().includes(searchQuery);
-        const catMatch = activeCategory === "ALL" || (g.category || "Fighting") === activeCategory;
-        return titleMatch && catMatch;
-      });
-
-      // Fetch Thumbnails
-      const allGames = [...OFFICIAL_POPULAR_GAMES, ...userGames];
-      const thumbData = await fetchGameData(allGames);
-
-      // Render Favorites Shelf
-      const favSec = document.getElementById("favorites-section");
-      const favGrid = document.getElementById("favorites-grid");
-      if (currentUser && userFavs.length > 0) {
-        favSec.style.display = "block";
-        let favHtml = "";
-        allGames.filter(g => userFavs.includes(g.placeId)).forEach(g => {
-          favHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, OFFICIAL_POPULAR_GAMES.some(p => p.placeId === g.placeId));
-        });
-        favGrid.innerHTML = favHtml || "<p style='color:#777;'>No matching favorites found.</p>";
-      } else {
-        favSec.style.display = "none";
-      }
-
-      // Render Popular Grid
-      const popGrid = document.getElementById("popular-grid");
+      let popGrid = document.getElementById("popular-grid");
       let popHtml = "";
       filteredPopular.forEach(g => {
-        popHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, true);
+        popHtml += createGameCardHtml(g, verifiedGames, userFavs, true);
       });
-      popGrid.innerHTML = popHtml || "<p style='color:#777;'>No matching popular experiences found.</p>";
-
-      // Render User Grid
-      const userGrid = document.getElementById("user-grid");
-      let userHtml = "";
-      filteredUser.forEach(g => {
-        userHtml += createGameCardHtml(g, thumbData, verifiedGames, userFavs, false);
-      });
-      userGrid.innerHTML = userHtml || "<p style='color:#777;'>No matching community experiences found.</p>";
+      popGrid.innerHTML = popHtml || "<p style='color:#777;'>Searching Roblox network...</p>";
     }
 
     function openModal(id) { document.getElementById(id).style.display = "flex"; }
