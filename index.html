@@ -236,6 +236,8 @@
   </div>
 
   <script>
+    const DEFAULT_ICON = "https://tr.rbxcdn.com/53eb9d17fe2910714da296cca30d43f0/150/150/Image/Png";
+
     const OFFICIAL_POPULAR_GAMES = [
       { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc" },
       { rank: 2, placeId: 920587237, universeId: 35142277, defaultName: "Adopt Me!", creator: "Uplift Games" },
@@ -600,18 +602,20 @@
         const data = await response.json();
 
         const iconMap = {};
-        data.icons?.forEach(i => iconMap[i.targetId] = i.imageUrl);
+        data.icons?.forEach(i => {
+          if (i.targetId && i.imageUrl) iconMap[i.targetId] = i.imageUrl;
+        });
 
         const thumbMap = {};
         data.universeThumbs?.forEach(t => {
-          if (t.thumbnails && t.thumbnails[0]) {
+          if (t.universeId && t.thumbnails?.[0]?.imageUrl) {
             thumbMap[t.universeId] = t.thumbnails[0].imageUrl;
           }
         });
 
         const placeThumbMap = {};
         data.placeThumbs?.forEach(p => {
-          placeThumbMap[p.targetId] = p.imageUrl;
+          if (p.targetId && p.imageUrl) placeThumbMap[p.targetId] = p.imageUrl;
         });
 
         return { iconMap, thumbMap, placeThumbMap };
@@ -632,7 +636,7 @@
       let popHtml = "";
       for (let game of OFFICIAL_POPULAR_GAMES) {
         const details = cachedGameDetails[game.placeId];
-        const iconUrl = popData.iconMap[game.placeId] || "";
+        const iconUrl = popData.iconMap[game.placeId] || popData.placeThumbMap[game.placeId] || DEFAULT_ICON;
         const thumbUrl = popData.thumbMap[game.universeId] || popData.placeThumbMap[game.placeId] || iconUrl;
         const gameTitle = details?.name || game.defaultName;
         const creatorName = game.creator || details?.builder || "Official Developer";
@@ -673,7 +677,7 @@
       let userHtml = "";
       for (let game of userGames) {
         const details = cachedGameDetails[game.placeId];
-        const iconUrl = userData.iconMap[game.placeId] || "";
+        const iconUrl = userData.iconMap[game.placeId] || userData.placeThumbMap[game.placeId] || DEFAULT_ICON;
         const thumbUrl = userData.thumbMap[details?.universeId] || userData.placeThumbMap[game.placeId] || iconUrl;
         const title = details?.name || `Place #${game.placeId}`;
         const builder = details?.builder || "Community Creator";
