@@ -318,7 +318,7 @@
       updateUI();
     }
 
-    /* Roblox Account Verification (RoProxy API Integration) */
+    /* Roblox Account Verification (Backend Vercel API Call) */
     function generateLinkCode() {
       const rbxUser = document.getElementById("roblox-username-input").value.trim();
       if (!rbxUser) return alert("Enter your Roblox username.");
@@ -332,37 +332,20 @@
       const rbxUser = document.getElementById("roblox-username-input").value.trim();
       if (!rbxUser) return alert("Enter your Roblox username.");
 
-      const roProxy = "https://users.roproxy.com";
-
       try {
-        // 1. Resolve User ID via RoProxy
-        let userId = null;
-        
-        try {
-          const idRes = await fetch(`${roProxy}/v1/usernames/users`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ usernames: [rbxUser], excludeBannedUsers: true })
-          }).then(r => r.json());
+        const response = await fetch('/api/verify-bio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: rbxUser })
+        });
 
-          userId = idRes.data?.[0]?.id;
-        } catch(err) {
-          console.warn("POST lookup failed, trying GET search fallback...");
+        const data = await response.json();
+
+        if (!response.ok) {
+          return alert(data.error || "Failed to find Roblox account.");
         }
 
-        // Search Fallback if direct POST is blocked or username differs from Display Name
-        if (!userId) {
-          const searchRes = await fetch(`${roProxy}/v1/users/search?keyword=${encodeURIComponent(rbxUser)}&limit=10`).then(r => r.json());
-          const matchedUser = searchRes.data?.find(u => u.name.toLowerCase() === rbxUser.toLowerCase() || u.displayName.toLowerCase() === rbxUser.toLowerCase());
-          if (matchedUser) userId = matchedUser.id;
-        }
-
-        if (!userId) return alert("Roblox user not found. Please double check the username.");
-
-        // 2. Fetch User Profile Bio/Description
-        const userRes = await fetch(`${roProxy}/v1/users/${userId}`).then(r => r.json());
-
-        if (userRes.description && userRes.description.toLowerCase().includes(rbxUser.toLowerCase())) {
+        if (data.description && data.description.toLowerCase().includes(rbxUser.toLowerCase())) {
           let verifiedUsers = getStorage("verified_roblox_users", {});
           verifiedUsers[currentUser] = rbxUser;
           setStorage("verified_roblox_users", verifiedUsers);
