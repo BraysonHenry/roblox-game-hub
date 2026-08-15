@@ -131,12 +131,12 @@
       <h3>Link Roblox Account</h3>
       <p style="font-size:0.85rem; color:#ccc; margin:0;">Verify your Roblox username to chat and share private servers:</p>
       <input type="text" id="roblox-username-input" placeholder="Your Roblox Username">
-      <button onclick="generateLinkCode()">1. Generate Link Code</button>
+      <button onclick="generateLinkCode()">1. Prepare Verification</button>
       
       <div id="link-code-section" style="display:none;">
-        <p style="font-size:0.8rem; color:#aaa; margin:5px 0 0 0;">2. Add this exact text to your <b>Roblox Profile Bio</b>:</p>
-        <div id="link-code-display" class="code-box">code vrfy 000000</div>
-        <button onclick="verifyRobloxBio()">3. Verify Profile Bio</button>
+        <p style="font-size:0.8rem; color:#aaa; margin:5px 0 0 0;">2. Add this text to your <b>Roblox Profile Bio</b>:</p>
+        <div id="link-code-display" class="code-box">username</div>
+        <button onclick="verifyRobloxBio()">3. Verify Bio</button>
       </div>
 
       <button onclick="closeModal('account-link-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
@@ -193,8 +193,8 @@
     <div class="modal-content">
       <h3>Developer Verification</h3>
       <p style="font-size:0.85rem; color:#ccc; margin:0;">Prove ownership of <b id="verify-game-name">Game</b>:</p>
-      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add this verification code to your game's description on Roblox:</p>
-      <div id="generated-code" class="code-box">code vrfy 000000</div>
+      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add your website username to your game's description on Roblox:</p>
+      <div id="generated-code" class="code-box">username</div>
       <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">2. Click verify once saved on Roblox:</p>
       <button onclick="checkVerification()">Check Description & Verify</button>
       <button onclick="closeModal('verify-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
@@ -318,14 +318,12 @@
       updateUI();
     }
 
-    /* Roblox Account Verification (Moderation Safe Code) */
+    /* Roblox Account Verification (Uses Roblox Username directly) */
     function generateLinkCode() {
       const rbxUser = document.getElementById("roblox-username-input").value.trim();
       if (!rbxUser) return alert("Enter your Roblox username.");
       
-      const numCode = Math.floor(100000 + Math.random() * 900000);
-      currentLinkCode = "code vrfy " + numCode;
-      
+      currentLinkCode = rbxUser;
       document.getElementById("link-code-display").innerText = currentLinkCode;
       document.getElementById("link-code-section").style.display = "block";
     }
@@ -346,7 +344,7 @@
 
         const userRes = await fetch(`${corsProxy}${encodeURIComponent(`https://users.roblox.com/v1/users/${userId}`)}`).then(r => r.json());
 
-        if (userRes.description && userRes.description.includes(currentLinkCode)) {
+        if (userRes.description && userRes.description.toLowerCase().includes(rbxUser.toLowerCase())) {
           let verifiedUsers = getStorage("verified_roblox_users", {});
           verifiedUsers[currentUser] = rbxUser;
           setStorage("verified_roblox_users", verifiedUsers);
@@ -355,7 +353,7 @@
           closeModal("account-link-modal");
           updateUI();
         } else {
-          alert("❌ Verification code not found in your Roblox Profile Bio.");
+          alert(`❌ Could not find "${rbxUser}" in your Roblox Bio.`);
         }
       } catch (e) {
         alert("Error verifying Roblox bio.");
@@ -463,7 +461,7 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    /* Developer Verification & Submissions */
+    /* Developer Verification & Submissions (Uses Website Username directly) */
     function submitGame() {
       const inputId = parseInt(document.getElementById("place-id").value.trim());
       if (!inputId) return alert("Enter a valid Place ID");
@@ -486,8 +484,7 @@
       if (!currentUser) return alert("Please sign in first to claim/verify a game.");
       
       activeVerifyPlaceId = placeId;
-      const numCode = Math.floor(100000 + Math.random() * 900000);
-      activeVerifyCode = "code vrfy " + numCode;
+      activeVerifyCode = currentUser;
       
       document.getElementById("verify-game-name").innerText = title;
       document.getElementById("generated-code").innerText = activeVerifyCode;
@@ -514,7 +511,7 @@
         const detailsRes = await fetch(`${corsProxy}${encodeURIComponent(`https://games.roblox.com/v1/games?universeIds=${universeId}`)}`).then(r => r.json());
         const gameData = detailsRes.data?.[0];
 
-        if (gameData && gameData.description && gameData.description.includes(activeVerifyCode)) {
+        if (gameData && gameData.description && gameData.description.toLowerCase().includes(activeVerifyCode.toLowerCase())) {
           let verifiedGames = getStorage("verified_games", {});
           verifiedGames[activeVerifyPlaceId] = { verifiedBy: currentUser, verifiedAt: new Date().toLocaleDateString() };
           setStorage("verified_games", verifiedGames);
@@ -523,7 +520,7 @@
           closeModal("verify-modal");
           renderAllGames();
         } else {
-          alert("❌ Verification code not found in game description.");
+          alert(`❌ Could not find "${activeVerifyCode}" in game description.`);
         }
       } catch (e) {
         alert("Error checking verification status.");
