@@ -27,9 +27,9 @@
     }
     .modal-content {
       background: #1e1e1e; padding: 25px; border-radius: 10px;
-      width: 320px; display: flex; flex-direction: column; gap: 10px;
+      width: 360px; display: flex; flex-direction: column; gap: 10px;
     }
-    .modal-content input {
+    .modal-content input, .modal-content textarea {
       padding: 10px; background: #2a2a2a; border: 1px solid #444;
       color: #fff; border-radius: 4px;
     }
@@ -59,6 +59,17 @@
     .badge {
       display: inline-block; background: #ff9800; color: #000; font-size: 0.75rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content;
+    }
+    .verified-badge {
+      display: inline-block; background: #00e676; color: #000; font-size: 0.75rem;
+      font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content; margin-left: 5px;
+    }
+    .verify-btn {
+      background: #333; color: #aaa; border: 1px solid #555; margin-top: 5px; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; cursor: pointer;
+    }
+    .verify-btn:hover { background: #444; color: #fff; }
+    .code-box {
+      background: #111; padding: 10px; font-family: monospace; color: #00e676; border: 1px dashed #444; text-align: center; font-size: 1.1rem; margin: 5px 0;
     }
   </style>
 </head>
@@ -101,6 +112,21 @@
     </div>
   </div>
 
+  <!-- Developer Verification Modal -->
+  <div id="verify-modal" class="modal">
+    <div class="modal-content">
+      <h3>Developer Verification</h3>
+      <p style="font-size:0.85rem; color:#ccc; margin:0;">Prove ownership of <b id="verify-game-name">Game</b>:</p>
+      
+      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add this verification code to your game's description on Roblox:</p>
+      <div id="generated-code" class="code-box">VERIFY-XXXXXX</div>
+
+      <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">2. Click verify once saved on Roblox:</p>
+      <button onclick="checkVerification()">Check Description & Verify</button>
+      <button onclick="closeModal('verify-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
+    </div>
+  </div>
+
   <script>
     const OFFICIAL_POPULAR_GAMES = [
       { rank: 1, placeId: 2753915549, universeId: 994732206, defaultName: "Blox Fruits", creator: "Gamer Robot Inc" },
@@ -113,6 +139,8 @@
     ];
 
     let currentUser = localStorage.getItem("activeUser") || null;
+    let activeVerifyPlaceId = null;
+    let activeVerifyCode = "";
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
@@ -163,17 +191,67 @@
 
       const isOfficial = OFFICIAL_POPULAR_GAMES.some(g => g.placeId === inputId);
       if (isOfficial) {
-        return alert("This experience is on the Official Popular Chart and cannot be submitted by users.");
+        return alert("This experience is on the Official Popular Chart.");
       }
 
       let userGames = getStorage("user_games", []);
       if (!userGames.some(g => g.placeId === inputId)) {
-        userGames.push({ placeId: inputId, addedBy: currentUser });
+        userGames.push({ placeId: inputId, addedBy: currentUser, verified: false });
         setStorage("user_games", userGames);
       }
 
       closeModal("game-modal");
       renderAllGames();
+    }
+
+    function startVerification(placeId, title) {
+      if (!currentUser) return alert("Please sign in first to claim/verify a game.");
+      
+      activeVerifyPlaceId = placeId;
+      activeVerifyCode = "VERIFY-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      document.getElementById("verify-game-name").innerText = title;
+      document.getElementById("generated-code").innerText = activeVerifyCode;
+      openModal("verify-modal");
+    }
+
+    async function checkVerification() {
+      if (!activeVerifyPlaceId) return;
+
+      const corsProxy = "https://corsproxy.io/?";
+      const officialGame = OFFICIAL_POPULAR_GAMES.find(g => g.placeId === activeVerifyPlaceId);
+      
+      let universeId = officialGame?.universeId;
+
+      if (!universeId) {
+        // Fetch universe ID if not available
+        try {
+          const uRes = await fetch(`${corsProxy}${encodeURIComponent(`https://apis.roblox.com/universes/v1/places/${activeVerifyPlaceId}/universe`)}`).then(r => r.json());
+          universeId = uRes.universeId;
+        } catch (e) {}
+      }
+
+      if (!universeId) return alert("Failed to fetch game details from Roblox.");
+
+      try {
+        const detailsRes = await fetch(`${corsProxy}${encodeURIComponent(`https://games.roblox.com/v1/games?universeIds=${universeId}`)}`).then(r => r.json());
+        const gameData = detailsRes.data?.[0];
+
+        if (gameData && gameData.description && gameData.description.includes(activeVerifyCode)) {
+          // Save verification status
+          let verifiedGames = getStorage("verified_games", {});
+          verifiedGames[activeVerifyPlaceId] = { verifiedBy: currentUser, verifiedAt: new Date().toLocaleDateString() };
+          setStorage("verified_games", verifiedGames);
+
+          alert("✅ Verification successful! Ownership confirmed.");
+          closeModal("verify-modal");
+          renderAllGames();
+        } else {
+          alert("❌ Verification code not found in the game description. Make sure to save description changes on Roblox and try again.");
+        }
+      } catch (e) {
+        alert("Error checking verification status.");
+      }
     }
 
     async function fetchGameData(gamesList) {
@@ -219,6 +297,7 @@
 
     async function renderAllGames() {
       OFFICIAL_POPULAR_GAMES.sort((a, b) => a.rank - b.rank);
+      const verifiedGames = getStorage("verified_games", {});
 
       const popGrid = document.getElementById("popular-grid");
       popGrid.innerHTML = "Loading chart games...";
@@ -231,6 +310,7 @@
         const thumbUrl = popData.thumbMap[game.universeId] || iconUrl;
         const gameTitle = details?.name || game.defaultName;
         const creatorName = game.creator || details?.builder || "Official Developer";
+        const isVerified = !!verifiedGames[game.placeId];
 
         popHtml += `
           <div class="game-card">
@@ -241,10 +321,12 @@
             <div class="card-body">
               <div>
                 <span class="badge">#${game.rank} POPULAR</span>
+                ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
                 <h3>${gameTitle}</h3>
                 <div class="creator-tag">By ${creatorName}</div>
               </div>
               <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
+              ${!isVerified ? `<button class="verify-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}')">Claim / Verify Ownership</button>` : ''}
             </div>
           </div>
         `;
@@ -269,6 +351,7 @@
         const thumbUrl = userData.thumbMap[details?.universeId] || iconUrl;
         const title = details?.name || `Place #${game.placeId}`;
         const builder = details?.builder || "Community Creator";
+        const isVerified = !!verifiedGames[game.placeId];
 
         userHtml += `
           <div class="game-card">
@@ -278,10 +361,12 @@
             </div>
             <div class="card-body">
               <div>
+                ${isVerified ? '<span class="verified-badge">✓ VERIFIED DEV</span>' : ''}
                 <h3>${title}</h3>
                 <div class="creator-tag">Uploaded by ${game.addedBy} (By ${builder})</div>
               </div>
               <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
+              ${!isVerified ? `<button class="verify-btn" onclick="startVerification(${game.placeId}, '${title.replace(/'/g, "\\'")}')">Claim / Verify Ownership</button>` : ''}
             </div>
           </div>
         `;
