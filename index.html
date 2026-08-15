@@ -85,7 +85,6 @@
     }
     .server-item:last-child { border-bottom: none; }
 
-    /* Chat Styling */
     .chat-box {
       background: #111; border: 1px solid #333; border-radius: 6px;
       height: 200px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;
@@ -318,7 +317,6 @@
       updateUI();
     }
 
-    /* Roblox Account Verification (Backend Vercel API Call) */
     function generateLinkCode() {
       const rbxUser = document.getElementById("roblox-username-input").value.trim();
       if (!rbxUser) return alert("Enter your Roblox username.");
@@ -362,7 +360,6 @@
       }
     }
 
-    /* Real-time Friend Requests */
     function sendFriendRequest() {
       const targetUser = document.getElementById("friend-username").value.trim();
       if (!targetUser) return;
@@ -414,7 +411,6 @@
       }
     }
 
-    /* Website In-Site Chat */
     function openChat(friendUsername) {
       activeChatFriend = friendUsername;
       document.getElementById("chat-with-header").innerText = `Chat with ${friendUsername}`;
@@ -463,7 +459,6 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    /* Developer Verification & Submissions */
     function submitGame() {
       const inputId = parseInt(document.getElementById("place-id").value.trim());
       if (!inputId) return alert("Enter a valid Place ID");
@@ -597,44 +592,31 @@
     }
 
     async function fetchGameData(gamesList) {
-      const roThumbProxy = "https://thumbnails.roproxy.com";
-      const roGamesProxy = "https://games.roproxy.com";
-      const placeIds = gamesList.map(g => g.placeId).join(",");
+      const placeIds = gamesList.map(g => g.placeId).filter(Boolean).join(",");
       const universeIds = gamesList.map(g => g.universeId).filter(Boolean).join(",");
 
-      const iconApi = `${roThumbProxy}/v1/places/gameicons?placeIds=${placeIds}&size=150x150&format=Png&isCircular=false`;
-      const thumbApi = universeIds ? `${roThumbProxy}/v1/games/multiget/thumbnails?universeIds=${universeIds}&countPerUniverse=1&size=768x432&format=Png` : null;
-      const placeThumbApi = `${roThumbProxy}/v1/games/icons?placeIds=${placeIds}&size=512x512&format=Png&isCircular=false`;
-
       try {
-        const fetchPromises = [
-          fetch(iconApi).then(r => r.json()).catch(() => ({})),
-          fetch(placeThumbApi).then(r => r.json()).catch(() => ({}))
-        ];
-
-        if (thumbApi) {
-          fetchPromises.push(fetch(thumbApi).then(r => r.json()).catch(() => ({})));
-        }
-
-        const [iconRes, placeThumbRes, thumbRes] = await Promise.all(fetchPromises);
+        const response = await fetch(`/api/thumbnails?placeIds=${placeIds}&universeIds=${universeIds}`);
+        const data = await response.json();
 
         const iconMap = {};
-        iconRes.data?.forEach(i => iconMap[i.targetId] = i.imageUrl);
+        data.icons?.forEach(i => iconMap[i.targetId] = i.imageUrl);
 
         const thumbMap = {};
-        thumbRes?.data?.forEach(t => {
+        data.universeThumbs?.forEach(t => {
           if (t.thumbnails && t.thumbnails[0]) {
             thumbMap[t.universeId] = t.thumbnails[0].imageUrl;
           }
         });
 
         const placeThumbMap = {};
-        placeThumbRes.data?.forEach(p => {
+        data.placeThumbs?.forEach(p => {
           placeThumbMap[p.targetId] = p.imageUrl;
         });
 
         return { iconMap, thumbMap, placeThumbMap };
       } catch (e) {
+        console.error("Thumbnail fetch error:", e);
         return { iconMap: {}, thumbMap: {}, placeThumbMap: {} };
       }
     }
