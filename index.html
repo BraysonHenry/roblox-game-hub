@@ -18,20 +18,22 @@
       background-color: #00a2ff; color: #fff; border: none;
       padding: 8px 16px; border-radius: 6px; cursor: pointer;
       font-weight: bold; text-decoration: none; display: inline-block;
+      text-align: center;
     }
     button:hover, .btn:hover { background-color: #0082cc; }
 
     .modal {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 1000;
+      background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 1000;
     }
     .modal-content {
       background: #1e1e1e; padding: 25px; border-radius: 10px;
-      width: 360px; display: flex; flex-direction: column; gap: 10px;
+      width: 420px; max-width: 90%; max-height: 85vh; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px;
     }
     .modal-content input, .modal-content textarea {
       padding: 10px; background: #2a2a2a; border: 1px solid #444;
-      color: #fff; border-radius: 4px;
+      color: #fff; border-radius: 4px; width: 100%;
     }
 
     .container { max-width: 1000px; margin: 0 auto; }
@@ -44,8 +46,11 @@
 
     .game-card {
       background: #1e1e1e; border: 1px solid #333; border-radius: 10px;
-      overflow: hidden; display: flex; flex-direction: column;
+      overflow: hidden; display: flex; flex-direction: column; cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
     }
+    .game-card:hover { transform: translateY(-3px); border-color: #00a2ff; }
+
     .thumbnail-box { position: relative; width: 100%; height: 150px; background: #2a2a2a; }
     .thumbnail-box img.thumb { width: 100%; height: 100%; object-fit: cover; }
     .thumbnail-box img.icon {
@@ -56,6 +61,7 @@
     .card-body { padding: 25px 15px 15px 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .card-body h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
     .creator-tag { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
+    
     .badge {
       display: inline-block; background: #ff9800; color: #000; font-size: 0.75rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content;
@@ -64,13 +70,20 @@
       display: inline-block; background: #00e676; color: #000; font-size: 0.75rem;
       font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; width: fit-content; margin-left: 5px;
     }
-    .verify-btn {
-      background: #333; color: #aaa; border: 1px solid #555; margin-top: 5px; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; cursor: pointer;
+    .action-btn {
+      background: #333; color: #aaa; border: 1px solid #555; margin-top: 5px; padding: 6px 10px; font-size: 0.8rem; border-radius: 4px; cursor: pointer;
     }
-    .verify-btn:hover { background: #444; color: #fff; }
+    .action-btn:hover { background: #444; color: #fff; }
     .code-box {
       background: #111; padding: 10px; font-family: monospace; color: #00e676; border: 1px dashed #444; text-align: center; font-size: 1.1rem; margin: 5px 0;
     }
+    .server-list {
+      background: #111; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid #333;
+    }
+    .server-item {
+      display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; font-size: 0.85rem;
+    }
+    .server-item:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -93,12 +106,24 @@
   <!-- Auth Modal -->
   <div id="auth-modal" class="modal">
     <div class="modal-content">
-      <h3 id="auth-title">Account Access</h3>
+      <h3>Account Access</h3>
       <input type="text" id="username" placeholder="Username">
       <input type="password" id="password" placeholder="Password">
       <button onclick="handleAuth('login')">Sign In</button>
       <button onclick="handleAuth('signup')" style="background: #333;">Create Account</button>
       <button onclick="closeModal('auth-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Friends Modal -->
+  <div id="friends-modal" class="modal">
+    <div class="modal-content">
+      <h3>Manage Friends</h3>
+      <p style="font-size:0.85rem; color:#aaa; margin:0;">Add friends to see their private server links:</p>
+      <input type="text" id="friend-username" placeholder="Friend's Username">
+      <button onclick="addFriend()">Add Friend</button>
+      <div id="friends-list-container" style="font-size:0.85rem; color:#ccc;"></div>
+      <button onclick="closeModal('friends-modal')" style="background: transparent; border: 1px solid #555;">Close</button>
     </div>
   </div>
 
@@ -117,13 +142,47 @@
     <div class="modal-content">
       <h3>Developer Verification</h3>
       <p style="font-size:0.85rem; color:#ccc; margin:0;">Prove ownership of <b id="verify-game-name">Game</b>:</p>
-      
       <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">1. Add this verification code to your game's description on Roblox:</p>
       <div id="generated-code" class="code-box">VERIFY-XXXXXX</div>
-
       <p style="font-size:0.8rem; color:#888; margin:5px 0 0 0;">2. Click verify once saved on Roblox:</p>
       <button onclick="checkVerification()">Check Description & Verify</button>
       <button onclick="closeModal('verify-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Full Info & Private Server Modal -->
+  <div id="info-modal" class="modal">
+    <div class="modal-content">
+      <h2 id="info-title" style="margin:0; border:none;">Game Title</h2>
+      <div id="info-creator" style="font-size:0.85rem; color:#888;"></div>
+      <div id="info-badges"></div>
+
+      <div style="font-size:0.85rem; color:#ccc; margin-top:10px;">
+        <b>Description:</b>
+        <p id="info-description" style="background:#111; padding:10px; border-radius:6px; max-height:150px; overflow-y:auto; font-size:0.8rem; white-space:pre-wrap; color:#aaa; margin-top:5px;"></p>
+      </div>
+
+      <a id="info-play-btn" href="#" class="btn" style="width:100%; margin-top:5px;">Play Game</a>
+
+      <!-- Private Servers Section -->
+      <div class="server-list">
+        <b style="font-size:0.9rem;">🔒 Friends Private Servers</b>
+        <div id="private-servers-container" style="margin-top:5px;"></div>
+        <button class="action-btn" style="width:100%; margin-top:8px;" onclick="openAddServerModal()">+ Add Private Server Link</button>
+      </div>
+
+      <button onclick="closeModal('info-modal')" style="background: transparent; border: 1px solid #555;">Close</button>
+    </div>
+  </div>
+
+  <!-- Add Private Server Link Modal -->
+  <div id="add-server-modal" class="modal">
+    <div class="modal-content">
+      <h3>Add Private Server Link</h3>
+      <p style="font-size:0.8rem; color:#aaa; margin:0;">Only users on your website friends list will be able to see this link.</p>
+      <input type="text" id="server-link-input" placeholder="https://www.roblox.com/games/123456?privateServerLinkCode=...">
+      <button onclick="savePrivateServer()">Save Private Server</button>
+      <button onclick="closeModal('add-server-modal')" style="background: transparent; border: 1px solid #555;">Cancel</button>
     </div>
   </div>
 
@@ -141,6 +200,8 @@
     let currentUser = localStorage.getItem("activeUser") || null;
     let activeVerifyPlaceId = null;
     let activeVerifyCode = "";
+    let selectedGamePlaceId = null;
+    let cachedGameDetails = {};
 
     function getStorage(key, fallback) { return JSON.parse(localStorage.getItem(key)) || fallback; }
     function setStorage(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
@@ -150,6 +211,7 @@
       if (currentUser) {
         authSec.innerHTML = `
           <span>Welcome, <b>${currentUser}</b></span>
+          <button onclick="openModal('friends-modal'); renderFriendsList();">Friends</button>
           <button onclick="openModal('game-modal')">+ Add Game</button>
           <button onclick="logout()" style="background: #e53935;">Sign Out</button>
         `;
@@ -185,18 +247,44 @@
       updateUI();
     }
 
+    function addFriend() {
+      const friendName = document.getElementById("friend-username").value.trim();
+      if (!friendName) return;
+      if (friendName === currentUser) return alert("You cannot add yourself.");
+
+      let friendsMap = getStorage("site_friends", {});
+      let userFriends = friendsMap[currentUser] || [];
+
+      if (!userFriends.includes(friendName)) {
+        userFriends.push(friendName);
+        friendsMap[currentUser] = userFriends;
+        setStorage("site_friends", friendsMap);
+      }
+      document.getElementById("friend-username").value = "";
+      renderFriendsList();
+    }
+
+    function renderFriendsList() {
+      let friendsMap = getStorage("site_friends", {});
+      let userFriends = friendsMap[currentUser] || [];
+      const container = document.getElementById("friends-list-container");
+      if (userFriends.length === 0) {
+        container.innerHTML = "<p style='color:#777;'>No friends added yet.</p>";
+      } else {
+        container.innerHTML = "<b>Your Friends:</b> " + userFriends.join(", ");
+      }
+    }
+
     function submitGame() {
       const inputId = parseInt(document.getElementById("place-id").value.trim());
       if (!inputId) return alert("Enter a valid Place ID");
 
       const isOfficial = OFFICIAL_POPULAR_GAMES.some(g => g.placeId === inputId);
-      if (isOfficial) {
-        return alert("This experience is on the Official Popular Chart.");
-      }
+      if (isOfficial) return alert("This experience is on the Official Popular Chart.");
 
       let userGames = getStorage("user_games", []);
       if (!userGames.some(g => g.placeId === inputId)) {
-        userGames.push({ placeId: inputId, addedBy: currentUser, verified: false });
+        userGames.push({ placeId: inputId, addedBy: currentUser });
         setStorage("user_games", userGames);
       }
 
@@ -204,7 +292,8 @@
       renderAllGames();
     }
 
-    function startVerification(placeId, title) {
+    function startVerification(placeId, title, e) {
+      if (e) e.stopPropagation();
       if (!currentUser) return alert("Please sign in first to claim/verify a game.");
       
       activeVerifyPlaceId = placeId;
@@ -220,11 +309,9 @@
 
       const corsProxy = "https://corsproxy.io/?";
       const officialGame = OFFICIAL_POPULAR_GAMES.find(g => g.placeId === activeVerifyPlaceId);
-      
       let universeId = officialGame?.universeId;
 
       if (!universeId) {
-        // Fetch universe ID if not available
         try {
           const uRes = await fetch(`${corsProxy}${encodeURIComponent(`https://apis.roblox.com/universes/v1/places/${activeVerifyPlaceId}/universe`)}`).then(r => r.json());
           universeId = uRes.universeId;
@@ -238,7 +325,6 @@
         const gameData = detailsRes.data?.[0];
 
         if (gameData && gameData.description && gameData.description.includes(activeVerifyCode)) {
-          // Save verification status
           let verifiedGames = getStorage("verified_games", {});
           verifiedGames[activeVerifyPlaceId] = { verifiedBy: currentUser, verifiedAt: new Date().toLocaleDateString() };
           setStorage("verified_games", verifiedGames);
@@ -247,11 +333,78 @@
           closeModal("verify-modal");
           renderAllGames();
         } else {
-          alert("❌ Verification code not found in the game description. Make sure to save description changes on Roblox and try again.");
+          alert("❌ Verification code not found in game description.");
         }
       } catch (e) {
         alert("Error checking verification status.");
       }
+    }
+
+    function openGameInfo(placeId) {
+      selectedGamePlaceId = placeId;
+      const info = cachedGameDetails[placeId] || {};
+      const verifiedGames = getStorage("verified_games", {});
+      const isVerified = !!verifiedGames[placeId];
+
+      document.getElementById("info-title").innerText = info.name || `Place #${placeId}`;
+      document.getElementById("info-creator").innerText = "By " + (info.builder || "Developer");
+      document.getElementById("info-description").innerText = info.description || "No description provided.";
+      document.getElementById("info-play-btn").href = `roblox://placeid=${placeId}`;
+
+      let badgesHtml = "";
+      if (isVerified) badgesHtml += '<span class="verified-badge">✓ VERIFIED DEV</span>';
+      document.getElementById("info-badges").innerHTML = badgesHtml;
+
+      renderPrivateServers(placeId);
+      openModal("info-modal");
+    }
+
+    function renderPrivateServers(placeId) {
+      const container = document.getElementById("private-servers-container");
+      let allServers = getStorage("private_servers", {});
+      let gameServers = allServers[placeId] || [];
+
+      let friendsMap = getStorage("site_friends", {});
+      let userFriends = friendsMap[currentUser] || [];
+
+      // Filter servers: visible if posted by user OR posted by a added friend
+      let visibleServers = gameServers.filter(s => s.owner === currentUser || userFriends.includes(s.owner));
+
+      if (visibleServers.length === 0) {
+        container.innerHTML = "<p style='color:#777; font-size:0.8rem; margin:5px 0;'>No private server links from friends yet.</p>";
+      } else {
+        let html = "";
+        visibleServers.forEach(s => {
+          html += `
+            <div class="server-item">
+              <span><b>${s.owner}</b>'s Server</span>
+              <a href="${s.link}" target="_blank" class="btn" style="padding:3px 8px; font-size:0.75rem;">Join Server</a>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+    }
+
+    function openAddServerModal() {
+      if (!currentUser) return alert("Please sign in to share private servers.");
+      openModal("add-server-modal");
+    }
+
+    function savePrivateServer() {
+      const link = document.getElementById("server-link-input").value.trim();
+      if (!link) return alert("Enter a valid private server link.");
+
+      let allServers = getStorage("private_servers", {});
+      let gameServers = allServers[selectedGamePlaceId] || [];
+
+      gameServers.push({ owner: currentUser, link: link });
+      allServers[selectedGamePlaceId] = gameServers;
+      setStorage("private_servers", allServers);
+
+      document.getElementById("server-link-input").value = "";
+      closeModal("add-server-modal");
+      renderPrivateServers(selectedGamePlaceId);
     }
 
     async function fetchGameData(gamesList) {
@@ -278,8 +431,10 @@
           detailsMap[d.rootPlaceId] = {
             name: d.name,
             builder: d.creator?.name,
+            description: d.description,
             universeId: d.id
           };
+          cachedGameDetails[d.rootPlaceId] = detailsMap[d.rootPlaceId];
         });
 
         const thumbMap = {};
@@ -313,7 +468,7 @@
         const isVerified = !!verifiedGames[game.placeId];
 
         popHtml += `
-          <div class="game-card">
+          <div class="game-card" onclick="openGameInfo(${game.placeId})">
             <div class="thumbnail-box">
               <img class="thumb" src="${thumbUrl}" alt="${gameTitle}">
               <img class="icon" src="${iconUrl}" alt="Icon">
@@ -325,8 +480,8 @@
                 <h3>${gameTitle}</h3>
                 <div class="creator-tag">By ${creatorName}</div>
               </div>
-              <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
-              ${!isVerified ? `<button class="verify-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}')">Claim / Verify Ownership</button>` : ''}
+              <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
+              ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${gameTitle.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
             </div>
           </div>
         `;
@@ -354,7 +509,7 @@
         const isVerified = !!verifiedGames[game.placeId];
 
         userHtml += `
-          <div class="game-card">
+          <div class="game-card" onclick="openGameInfo(${game.placeId})">
             <div class="thumbnail-box">
               <img class="thumb" src="${thumbUrl}" alt="${title}">
               <img class="icon" src="${iconUrl}" alt="Icon">
@@ -365,8 +520,8 @@
                 <h3>${title}</h3>
                 <div class="creator-tag">Uploaded by ${game.addedBy} (By ${builder})</div>
               </div>
-              <a href="roblox://placeid=${game.placeId}" class="btn">Play</a>
-              ${!isVerified ? `<button class="verify-btn" onclick="startVerification(${game.placeId}, '${title.replace(/'/g, "\\'")}')">Claim / Verify Ownership</button>` : ''}
+              <a href="roblox://placeid=${game.placeId}" class="btn" onclick="event.stopPropagation();">Play</a>
+              ${!isVerified ? `<button class="action-btn" onclick="startVerification(${game.placeId}, '${title.replace(/'/g, "\\'")}', event)">Claim / Verify</button>` : ''}
             </div>
           </div>
         `;
